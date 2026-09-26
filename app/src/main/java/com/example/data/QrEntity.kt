@@ -31,5 +31,6 @@ data class QrEntity(
     val imageOpacity: Float = 0.86f,
     val ecc: String = "H",
     val scanScore: Int = 98,
+    val isScanned: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )

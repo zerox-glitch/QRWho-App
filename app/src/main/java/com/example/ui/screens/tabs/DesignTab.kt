@@ -1,5 +1,14 @@
 package com.example.ui.screens.tabs
 
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +26,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -30,6 +48,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,9 +64,14 @@ import com.example.ui.components.CustomColorSection
 import com.example.ui.components.EyeBallVisualTile
 import com.example.ui.components.EyeShapeVisualTile
 import com.example.ui.components.ModuleShapeVisualTile
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import com.example.ui.theme.BeaconRose
 import com.example.ui.theme.CardBorder
 import com.example.ui.theme.CardDark
 import com.example.ui.theme.ElectricCyan
+import com.example.ui.theme.EmeraldGreen
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
@@ -56,14 +81,76 @@ import com.example.ui.theme.TextSecondary
 fun DesignTab(
     style: QrStyle,
     onStyleChange: (QrStyle) -> Unit,
+    customLogo: Bitmap? = null,
+    onCustomLogoSelected: (Bitmap?) -> Unit = {},
+    onSaveCustomPreset: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var activeColorTarget by remember { mutableStateOf(com.example.ui.components.ColorTarget.Foreground) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var presetName by remember { mutableStateOf("") }
+    var presetDesc by remember { mutableStateOf("") }
+
+    val logoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val src = ImageDecoder.createSource(context.contentResolver, uri)
+                    ImageDecoder.decodeBitmap(src) { decoder, _, _ ->
+                        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                        decoder.isMutableRequired = true
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                }
+                onCustomLogoSelected(bitmap)
+            } catch (_: Exception) {}
+        }
+    }
 
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Quick Save as Custom Preset Card
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .border(1.dp, CardBorder, RoundedCornerShape(14.dp)),
+            color = SurfaceDark
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Save this Custom Look", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("Save shape, colors & frames into 'My Presets'", color = TextMuted, fontSize = 11.sp)
+                }
+                Button(
+                    onClick = {
+                        presetName = "My ${style.moduleShape.label} Preset"
+                        presetDesc = "Custom style"
+                        showSaveDialog = true
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan, contentColor = Color(0xFF0C0C0B)),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.BookmarkAdd, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Save Preset", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
         // 1. Module Shape: VISUAL TILES ONLY (No text names)
         Column {
             Row(
@@ -417,5 +504,58 @@ fun DesignTab(
                 )
             }
         }
+    }
+
+    if (showSaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showSaveDialog = false },
+            title = {
+                Text("Save Custom Preset", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Name your custom style to save it permanently in 'My Presets'.",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+                    OutlinedTextField(
+                        value = presetName,
+                        onValueChange = { presetName = it },
+                        label = { Text("Preset Name", color = TextMuted) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = presetDesc,
+                        onValueChange = { presetDesc = it },
+                        label = { Text("Description (Optional)", color = TextMuted) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (presetName.isNotBlank()) {
+                            onSaveCustomPreset(presetName.trim(), presetDesc.trim())
+                            showSaveDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan, contentColor = Color(0xFF0C0C0B))
+                ) {
+                    Text("Save", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSaveDialog = false }) {
+                    Text("Cancel", color = TextMuted)
+                }
+            },
+            containerColor = CardDark
+        )
     }
 }

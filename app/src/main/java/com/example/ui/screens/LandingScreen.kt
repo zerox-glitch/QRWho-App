@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
+import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -10,9 +12,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,6 +37,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.RestaurantMenu
@@ -41,12 +46,18 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,6 +66,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,11 +74,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
@@ -91,8 +105,15 @@ fun LandingScreen(
     viewModel: StudioViewModel,
     onNavigateToStudio: () -> Unit,
     onNavigateToScanner: () -> Unit,
+    onNavigateToHistory: (() -> Unit)? = null,
+    onNavigateToShowcase: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val favoriteIds by viewModel.favoriteIds.collectAsStateWithLifecycle()
+    val historyList by viewModel.historyList.collectAsStateWithLifecycle()
+    val customPresets by viewModel.customPresets.collectAsStateWithLifecycle()
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -117,9 +138,8 @@ fun LandingScreen(
                     painter = painterResource(id = R.drawable.qrwho_logo),
                     contentDescription = "QRWho Logo",
                     modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, CardBorder, RoundedCornerShape(8.dp))
+                        .size(55.dp)
+                        .clip(RoundedCornerShape(12.dp))
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
@@ -139,17 +159,26 @@ fun LandingScreen(
             }
 
             Button(
-                onClick = onNavigateToStudio,
+                onClick = {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/qrwho"))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {}
+                },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = ElectricCyan,
-                    contentColor = Color(0xFF0C0C0B)
+                    containerColor = Color(0xFFFF5E5B),
+                    contentColor = Color.White
                 ),
                 shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.testTag("landing_cta_studio_top")
+                modifier = Modifier.testTag("landing_top_kofi_button")
             ) {
-                Text("Studio", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(
+                    imageVector = Icons.Default.LocalCafe,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Support ☕", fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         }
 
@@ -260,37 +289,319 @@ fun LandingScreen(
                         onClick = onNavigateToStudio,
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp)
+                            .defaultMinSize(minHeight = 48.dp)
                             .testTag("hero_launch_studio"),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = ElectricCyan,
                             contentColor = Color(0xFF0C0C0B)
                         ),
                         shape = RoundedCornerShape(14.dp)
                     ) {
-                        Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Launch Studio", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(17.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Launch Studio",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
 
                     OutlinedButton(
                         onClick = onNavigateToScanner,
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp)
+                            .defaultMinSize(minHeight = 48.dp)
                             .testTag("hero_launch_scanner"),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
                         shape = RoundedCornerShape(14.dp)
                     ) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp), tint = TextPrimary)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Scan QR", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(17.dp), tint = TextPrimary)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Scan QR",
+                                color = TextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(28.dp))
+
+        // Pro Features & Creator Suite Section
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                    Text(
+                        text = "Pro Creator Suite",
+                        color = TextPrimary,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Powerful tools built directly into the Studio",
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(ElectricCyan.copy(alpha = 0.12f))
+                        .border(1.dp, ElectricCyan.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text("4 NEW TOOLS", color = ElectricCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Card 1: My Presets Library
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, EmeraldGreen.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+                color = CardDark
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(EmeraldGreen.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.BookmarkAdd, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text("✨ My Presets Library", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text("Personal Database of Custom Styles", color = EmeraldGreen, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.navigateToMyPresets()
+                                onNavigateToStudio()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen, contentColor = Color(0xFF0C0C0B)),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text("Open", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Customize dot shapes, eye corners, brand colors, frames, and gradients, then 1-tap save into your persistent on-device library.",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+
+            // Card 2: Preset Favoriting System
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, Color(0xFFFFB800).copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+                color = CardDark
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFFFFB800).copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB800), modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text("★ Preset Favorites", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text("Fast Access to 335+ Curated Styles", color = Color(0xFFFFB800), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.navigateToFavorites()
+                                if (onNavigateToShowcase != null) {
+                                    onNavigateToShowcase()
+                                } else {
+                                    onNavigateToStudio()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB800), contentColor = Color(0xFF0C0C0B)),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text("View", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Star any design in the Presets tab or Showcase. Your favorited styles instantly sync to dedicated '★ Favorites' filter chips.",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+
+            // Card 3: Pro Multi-Resolution PNG & Vector SVG Export
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, ElectricCyan.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+                color = CardDark
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(ElectricCyan.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Download, contentDescription = null, tint = ElectricCyan, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text("📐 Pro Export Suite", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text("512px to 4096px Ultra HD & Vector SVG", color = ElectricCyan, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        Button(
+                            onClick = onNavigateToStudio,
+                            colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan, contentColor = Color(0xFF0C0C0B)),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text("Export", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Export production print-ready PNG files (up to 4096px 300 DPI) or copy clean vector SVG code directly to your clipboard for Figma & Adobe Illustrator.",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+
+            // Card 4: Smart Categorized History & Style Restore
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
+                color = CardDark
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(SurfaceDark),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.History, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text("🕒 Smart History & Vault", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text("${historyList.size} codes saved on device", color = TextMuted, fontSize = 10.sp)
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                if (onNavigateToHistory != null) {
+                                    onNavigateToHistory()
+                                } else {
+                                    viewModel.navigateToHistoryCreated()
+                                    onNavigateToStudio()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan, contentColor = Color(0xFF0C0C0B)),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text("Open Vault", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Keep every created artwork and camera-scanned QR organized in separate tabs with 1-tap visual style restoration and sharing.",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Featured Art Showcase Section (9 Flagship Styles)
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -325,7 +636,7 @@ fun LandingScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Grid of Showcase items
+            // Grid of Showcase items with 1-tap Favoriting
             ShowcaseDesigns.items.chunked(2).forEach { rowItems ->
                 Row(
                     modifier = Modifier
@@ -336,6 +647,8 @@ fun LandingScreen(
                     rowItems.forEach { item ->
                         ShowcaseCard(
                             item = item,
+                            isFavorite = favoriteIds.contains(item.presetId),
+                            onToggleFavorite = { viewModel.toggleFavorite(item.presetId) },
                             onSelect = {
                                 viewModel.applyShowcase(item)
                                 onNavigateToStudio()
@@ -464,6 +777,86 @@ fun LandingScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // Ko-fi Support Section at the End of Home Page
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .border(1.5.dp, com.example.ui.components.KofiRed.copy(alpha = 0.5f), RoundedCornerShape(20.dp)),
+            color = CardDark
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(com.example.ui.components.KofiRed.copy(alpha = 0.15f))
+                        .border(1.dp, com.example.ui.components.KofiRed.copy(alpha = 0.4f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocalCafe,
+                        contentDescription = "Support QRWho",
+                        tint = com.example.ui.components.KofiRed,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Support QRWho to Keep it Free & Colorful! ☕🎨",
+                    color = TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = "QRWho is built with love—100% free, private, and watermark-free forever. If QRWho helped you build amazing artistic QR codes, consider supporting us on Ko-fi!",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 17.sp
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Button(
+                    onClick = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/qrwho"))
+                            context.startActivity(intent)
+                        } catch (e: Exception) {}
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = com.example.ui.components.KofiRed,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .height(44.dp)
+                        .testTag("landing_bottom_kofi_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocalCafe,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Support Us on Ko-fi ☕", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
 
         // Footer
@@ -479,7 +872,7 @@ fun LandingScreen(
                 Image(
                     painter = painterResource(id = R.drawable.qrwho_logo),
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp).clip(RoundedCornerShape(6.dp))
+                    modifier = Modifier.size(29.dp).clip(RoundedCornerShape(7.dp))
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("QRWho", color = TextPrimary, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic, fontSize = 16.sp)
@@ -506,6 +899,8 @@ fun LandingScreen(
 @Composable
 fun ShowcaseCard(
     item: ShowcaseItem,
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
     onSelect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -543,15 +938,33 @@ fun ShowcaseCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(ElectricCyan.copy(alpha = 0.15f))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(item.badge, color = ElectricCyan, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(ElectricCyan.copy(alpha = 0.15f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(item.badge, color = ElectricCyan, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                }
+
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = if (isFavorite) "Favorited" else "Favorite",
+                        tint = if (isFavorite) Color(0xFFFFB800) else TextMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))

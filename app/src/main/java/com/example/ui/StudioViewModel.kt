@@ -13,26 +13,18 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.AppDatabase
+import com.example.data.CustomPresetEntity
+import com.example.data.FavoritePresetEntity
 import com.example.data.QrEntity
 import com.example.data.QrRepository
-import com.example.qr.engine.BuiltInLogos
-import com.example.qr.engine.ImageMode
-import com.example.qr.engine.PayloadKind
-import com.example.qr.engine.QrGenerator
-import com.example.qr.engine.QrPayload
-import com.example.qr.engine.QrPreset
-import com.example.qr.engine.QrPresets
-import com.example.qr.engine.QrScannabilityEvaluator
-import com.example.qr.engine.QrStyle
-import com.example.qr.engine.SamplePhotos
-import com.example.qr.engine.ScanCheckResult
-import com.example.qr.engine.ShowcaseItem
+import com.example.qr.engine.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,8 +39,23 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
     val historyList: StateFlow<List<QrEntity>> = repository.allHistory
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Eagerly,
             initialValue = emptyList()
+        )
+
+    val customPresets: StateFlow<List<CustomPresetEntity>> = repository.customPresets
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
+
+    val favoriteIds: StateFlow<Set<String>> = repository.favoriteIds
+        .map { it.toSet() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptySet()
         )
 
     private val _payload = MutableStateFlow(QrPayload())
@@ -75,10 +82,23 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
     private val _activeStudioTab = MutableStateFlow(0)
     val activeStudioTab: StateFlow<Int> = _activeStudioTab.asStateFlow()
 
+    private val _presetFilterCategory = MutableStateFlow("All")
+    val presetFilterCategory: StateFlow<String> = _presetFilterCategory.asStateFlow()
+
+    private val _historyFilter = MutableStateFlow("All")
+    val historyFilter: StateFlow<String> = _historyFilter.asStateFlow()
+
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
+    private val _showKofiDialog = MutableStateFlow(false)
+    val showKofiDialog: StateFlow<Boolean> = _showKofiDialog.asStateFlow()
+
+    private val _kofiCountdown = MutableStateFlow(15)
+    val kofiCountdown: StateFlow<Int> = _kofiCountdown.asStateFlow()
+
     private var renderJob: Job? = null
+    private var kofiTimerJob: Job? = null
 
     init {
         // Initialize presets from assets (all 335 items)
@@ -86,8 +106,53 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
         triggerRender()
     }
 
+    fun triggerKofiSupportModal() {
+        kofiTimerJob?.cancel()
+        kofiTimerJob = viewModelScope.launch {
+            _kofiCountdown.value = 15
+            _showKofiDialog.value = true
+            for (i in 14 downTo 0) {
+                kotlinx.coroutines.delay(1000)
+                _kofiCountdown.value = i
+            }
+        }
+    }
+
+    fun dismissKofiDialog() {
+        kofiTimerJob?.cancel()
+        _showKofiDialog.value = false
+    }
+
     fun setStudioTab(index: Int) {
         _activeStudioTab.value = index
+    }
+
+    fun setPresetCategory(category: String) {
+        _presetFilterCategory.value = category
+    }
+
+    fun setHistoryFilter(filter: String) {
+        _historyFilter.value = filter
+    }
+
+    fun navigateToMyPresets() {
+        _activeStudioTab.value = 1
+        _presetFilterCategory.value = "✨ My Presets"
+    }
+
+    fun navigateToFavorites() {
+        _activeStudioTab.value = 1
+        _presetFilterCategory.value = "★ Favorites"
+    }
+
+    fun navigateToHistoryCreated() {
+        _activeStudioTab.value = 4
+        _historyFilter.value = "Created"
+    }
+
+    fun navigateToHistoryScanned() {
+        _activeStudioTab.value = 4
+        _historyFilter.value = "Scanned"
     }
 
     fun clearUserMessage() {
@@ -144,9 +209,99 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
     fun setCustomLogo(bitmap: Bitmap?) {
         _customLogo.value = bitmap
         if (bitmap != null) {
-            _style.value = _style.value.copy(selectedLogoId = null)
+            _style.value = _style.value.copy(
+                selectedLogoId = null,
+                ecc = "H", // Automatic Error Correction Level H (30%) for guaranteed scannability with center logo
+                logoScale = _style.value.logoScale.coerceIn(0.20f, 0.26f)
+            )
         }
         triggerRender()
+    }
+
+    fun saveCustomPreset(name: String, description: String = "") {
+        viewModelScope.launch(Dispatchers.IO) {
+            val s = _style.value
+            val entity = CustomPresetEntity(
+                name = name.ifBlank { "My Preset ${System.currentTimeMillis() % 1000}" },
+                description = description.ifBlank { "Custom ${s.moduleShape.label} Style" },
+                moduleShape = s.moduleShape.name,
+                eyeShape = s.eyeShape.name,
+                ballShape = s.ballShape.name,
+                fgColor = s.fgColor,
+                bgColor = s.bgColor,
+                eyeColor = s.eyeColor,
+                ballColor = s.ballColor,
+                gradientType = s.gradientType.name,
+                gradientTo = s.gradientTo,
+                frameStyle = s.frameStyle.name,
+                frameCaption = s.frameCaption,
+                quietZone = s.quietZone,
+                moduleGap = s.moduleGap,
+                dotScale = s.dotScale,
+                contrast = s.contrast,
+                ecc = s.ecc
+            )
+            repository.saveCustomPreset(entity)
+            withContext(Dispatchers.Main) {
+                _activeStudioTab.value = 1
+                _presetFilterCategory.value = "✨ My Presets"
+                _userMessage.value = "Saved '${entity.name}' to My Presets!"
+            }
+        }
+    }
+
+    fun deleteCustomPreset(id: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteCustomPreset(id)
+            withContext(Dispatchers.Main) {
+                _userMessage.value = "Deleted preset from My Presets"
+            }
+        }
+    }
+
+    fun toggleFavorite(presetId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val current = favoriteIds.value
+            val isFav = current.contains(presetId)
+            val presetName = QrPresets.findById(presetId)?.name
+                ?: customPresets.value.find { "custom_${it.id}" == presetId }?.name
+                ?: "Style"
+            if (isFav) {
+                repository.removeFavorite(presetId)
+                withContext(Dispatchers.Main) {
+                    _userMessage.value = "Removed '$presetName' from Favorites"
+                }
+            } else {
+                repository.addFavorite(presetId)
+                withContext(Dispatchers.Main) {
+                    _userMessage.value = "★ Added '$presetName' to Favorites!"
+                }
+            }
+        }
+    }
+
+    fun deleteHistoryItem(id: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteById(id)
+        }
+    }
+
+    fun clearAllHistory() {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.clearAll()
+            withContext(Dispatchers.Main) {
+                _userMessage.value = "Cleared all history"
+            }
+        }
+    }
+
+    fun clearHistoryByType(isScanned: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.clearByType(isScanned)
+            withContext(Dispatchers.Main) {
+                _userMessage.value = if (isScanned) "Cleared scanned QR history" else "Cleared saved QR creations"
+            }
+        }
     }
 
     fun selectBuiltInLogo(logoId: String?) {
@@ -251,8 +406,46 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         _payload.value = detected
+        recordScannedQr(trimmed)
         _userMessage.value = "Loaded scanned QR content into Studio!"
         triggerRender()
+    }
+
+    fun recordScannedQr(text: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val trimmed = text.trim()
+            val (kind, title) = when {
+                trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true) ->
+                    Pair(PayloadKind.URL, trimmed.take(45))
+                trimmed.startsWith("WIFI:", ignoreCase = true) -> {
+                    val ssid = Regex("S:([^;]+)").find(trimmed)?.groupValues?.get(1) ?: "Network"
+                    Pair(PayloadKind.WIFI, "Wi-Fi: $ssid")
+                }
+                trimmed.startsWith("BEGIN:VCARD", ignoreCase = true) -> {
+                    val fn = Regex("FN:([^\r\n]+)").find(trimmed)?.groupValues?.get(1) ?: "Contact"
+                    Pair(PayloadKind.VCARD, "Contact: $fn")
+                }
+                trimmed.startsWith("mailto:", ignoreCase = true) ->
+                    Pair(PayloadKind.EMAIL, "Email: ${trimmed.removePrefix("mailto:").substringBefore("?")}")
+                trimmed.startsWith("tel:", ignoreCase = true) ->
+                    Pair(PayloadKind.PHONE, "Phone: ${trimmed.removePrefix("tel:")}")
+                trimmed.startsWith("smsto:", ignoreCase = true) ->
+                    Pair(PayloadKind.SMS, "SMS: ${trimmed.removePrefix("smsto:").substringBefore(":")}")
+                trimmed.startsWith("geo:", ignoreCase = true) ->
+                    Pair(PayloadKind.GEO, "Map Location")
+                else ->
+                    Pair(PayloadKind.TEXT, trimmed.take(35).ifBlank { "Scanned QR" })
+            }
+            val entity = QrEntity(
+                title = title,
+                payloadKind = kind.name,
+                payloadRaw = trimmed,
+                encodedText = trimmed,
+                presetName = "Scanned",
+                isScanned = true
+            )
+            repository.saveQr(entity)
+        }
     }
 
     fun saveToHistory() {
@@ -265,7 +458,7 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
                     PayloadKind.WIFI -> "Wi-Fi: ${p.wifiSsid}"
                     PayloadKind.VCARD -> "${p.vcardFirstName} ${p.vcardLastName}".trim().ifBlank { "Contact Card" }
                     PayloadKind.EVENT -> p.eventTitle.ifBlank { "Event Calendar" }
-                    PayloadKind.EMAIL -> p.emailAddress.ifBlank { "Email Message" }
+                    PayloadKind.EMAIL -> p.emailTo.ifBlank { "Email Message" }
                     PayloadKind.PHONE -> p.phoneNumber.ifBlank { "Phone Call" }
                     PayloadKind.SMS -> "SMS: ${p.smsNumber}"
                     PayloadKind.GEO -> "Map Location"
@@ -297,7 +490,7 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
             )
             repository.saveQr(entity)
             withContext(Dispatchers.Main) {
-                _userMessage.value = "Saved '${entity.title}' to History!"
+                _userMessage.value = "Saved '${entity.title}' to History Vault!"
             }
         }
     }
@@ -328,7 +521,7 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
                         _payload.value.copy(kind = PayloadKind.VCARD, vcardFirstName = fn, vcardLastName = "", vcardPhone = tel, vcardEmail = email)
                     }
                     trimmed.startsWith("mailto:", ignoreCase = true) -> {
-                        _payload.value.copy(kind = PayloadKind.EMAIL, emailAddress = trimmed.removePrefix("mailto:"))
+                        _payload.value.copy(kind = PayloadKind.EMAIL, emailTo = trimmed.removePrefix("mailto:"))
                     }
                     trimmed.startsWith("tel:", ignoreCase = true) -> {
                         _payload.value.copy(kind = PayloadKind.PHONE, phoneNumber = trimmed.removePrefix("tel:"))
@@ -409,24 +602,15 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
                     putExtra(Intent.EXTRA_TEXT, "${item.title}\n${item.encodedText}\n\nCreated with QRWho Studio")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(Intent.createChooser(intent, "Share QR Code"))
+                val chooser = Intent.createChooser(intent, "Share QR Code").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(chooser)
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     _userMessage.value = "Share failed: ${e.localizedMessage}"
                 }
             }
-        }
-    }
-
-    fun deleteHistoryItem(id: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.deleteById(id)
-        }
-    }
-
-    fun clearAllHistory() {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.clearAll()
         }
     }
 
@@ -468,6 +652,7 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
 
                 withContext(Dispatchers.Main) {
                     _userMessage.value = "Exported print-ready PNG (${resolutionPx}px) to Pictures/QRWho!"
+                    triggerKofiSupportModal()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -490,22 +675,71 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val svgContent = getSvgString(1024)
                 val filename = "QRWho_${System.currentTimeMillis()}.svg"
+
+                // 1. Download & Save directly to user's device Downloads/QRWho storage
+                var savedToDownloads = false
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val contentValues = ContentValues().apply {
+                            put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                            put(MediaStore.MediaColumns.MIME_TYPE, "image/svg+xml")
+                            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/QRWho")
+                        }
+                        val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                        if (uri != null) {
+                            context.contentResolver.openOutputStream(uri)?.use { out ->
+                                out.write(svgContent.toByteArray(Charsets.UTF_8))
+                            }
+                            savedToDownloads = true
+                        }
+                    } else {
+                        val downloadsDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "QRWho")
+                        if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                        val file = File(downloadsDir, filename)
+                        file.writeText(svgContent, Charsets.UTF_8)
+                        savedToDownloads = true
+                    }
+                } catch (_: Exception) {}
+
+                // 2. Also write to cache for FileProvider sharing / export chooser
                 val dir = File(context.cacheDir, "exports")
                 if (!dir.exists()) dir.mkdirs()
-                val file = File(dir, filename)
-                file.writeText(svgContent)
+                val cacheFile = File(dir, filename)
+                cacheFile.writeText(svgContent, Charsets.UTF_8)
 
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", cacheFile)
                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                     type = "image/svg+xml"
                     putExtra(Intent.EXTRA_STREAM, uri)
                     putExtra(Intent.EXTRA_SUBJECT, "Artistic QR Code (Vector SVG)")
+                    putExtra(Intent.EXTRA_TEXT, "Vector SVG QR Code created with QRWho")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(Intent.createChooser(shareIntent, "Export Vector SVG"))
+
+                val chooser = Intent.createChooser(shareIntent, "Export Vector SVG").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+
+                try {
+                    context.startActivity(chooser)
+                } catch (_: Exception) {
+                    try {
+                        shareIntent.type = "text/plain"
+                        shareIntent.putExtra(Intent.EXTRA_TEXT, svgContent)
+                        shareIntent.removeExtra(Intent.EXTRA_STREAM)
+                        context.startActivity(Intent.createChooser(shareIntent, "Export SVG Content").apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        })
+                    } catch (_: Exception) {}
+                }
 
                 withContext(Dispatchers.Main) {
-                    _userMessage.value = "Exported genuine vector SVG file!"
+                    _userMessage.value = if (savedToDownloads) {
+                        "Vector SVG saved to Downloads/QRWho & ready to export!"
+                    } else {
+                        "Exported genuine vector SVG file!"
+                    }
+                    triggerKofiSupportModal()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -532,7 +766,10 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
                     putExtra(Intent.EXTRA_TEXT, "Created with QRWho — 100% Free Artistic QR Code Studio")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(Intent.createChooser(intent, "Share QR Code"))
+                val chooser = Intent.createChooser(intent, "Share QR Code").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(chooser)
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     _userMessage.value = "Share failed: ${e.localizedMessage}"

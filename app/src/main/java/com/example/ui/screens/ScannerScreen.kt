@@ -1,10 +1,13 @@
 package com.example.ui.screens
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -21,6 +24,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +52,7 @@ import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,11 +64,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -90,8 +97,12 @@ import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
 import com.google.zxing.MultiFormatReader
 import com.google.zxing.PlanarYUVLuminanceSource
+import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.common.GlobalHistogramBinarizer
 import com.google.zxing.common.HybridBinarizer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
 
 @Composable
@@ -102,6 +113,7 @@ fun ScannerScreen(
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+    val coroutineScope = rememberCoroutineScope()
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -116,25 +128,32 @@ fun ScannerScreen(
     }
 
     var scannedResult by remember { mutableStateOf<String?>(null) }
+    var scannedPhotoThumbnail by remember { mutableStateOf<Bitmap?>(null) }
+    var isAnalyzingPhoto by remember { mutableStateOf(false) }
+    var scanErrorMessage by remember { mutableStateOf<String?>(null) }
 
     // Pick image from gallery to scan
     val pickPhotoForScanLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
-            try {
-                val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    val src = ImageDecoder.createSource(context.contentResolver, uri)
-                    ImageDecoder.decodeBitmap(src)
+            isAnalyzingPhoto = true
+            scanErrorMessage = null
+            scannedResult = null
+            scannedPhotoThumbnail = null
+            coroutineScope.launch {
+                val decoded = withContext(Dispatchers.IO) {
+                    decodeQrFromGalleryUri(context, uri)
+                }
+                isAnalyzingPhoto = false
+                if (decoded != null) {
+                    scannedResult = decoded.text
+                    scannedPhotoThumbnail = decoded.thumbnail
+                    viewModel.recordScannedQr(decoded.text)
                 } else {
-                    @Suppress("DEPRECATION")
-                    MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                    scanErrorMessage = "No QR code could be found in the selected photo. Please make sure the QR code is clearly visible, in focus, and well-lit."
                 }
-                val evaluation = QrScannabilityEvaluator.evaluate(bitmap)
-                if (evaluation.decodedText != null) {
-                    scannedResult = evaluation.decodedText
-                }
-            } catch (_: Exception) {}
+            }
         }
     }
 
@@ -263,6 +282,7 @@ fun ScannerScreen(
 
                                 if (!decodedText.isNullOrEmpty() && decodedText != scannedResult) {
                                     scannedResult = decodedText
+                                    viewModel.recordScannedQr(decodedText)
                                 }
                             }
                             imageProxy.close()
@@ -390,6 +410,121 @@ fun ScannerScreen(
             }
         }
 
+        // Analyzing Photo from Gallery Overlay
+        AnimatedVisibility(
+            visible = isAnalyzingPhoto,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = CardDark.copy(alpha = 0.95f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
+                modifier = Modifier.padding(32.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        color = ElectricCyan,
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(42.dp)
+                    )
+                    Spacer(modifier = Modifier.height(18.dp))
+                    Text(
+                        text = "Analyzing Photo...",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Searching for QR code in selected image",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
+        }
+
+        // Photo Scan Error Message Sheet
+        AnimatedVisibility(
+            visible = scanErrorMessage != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(1.dp, Color(0xFFEF4444), RoundedCornerShape(20.dp)),
+                color = CardDark
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFEF4444))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("No QR Code Found", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                        IconButton(
+                            onClick = { scanErrorMessage = null },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = TextMuted)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = scanErrorMessage ?: "",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Button(
+                            onClick = {
+                                scanErrorMessage = null
+                                pickPhotoForScanLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ElectricCyan,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Choose Another Photo", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
         // Bottom Detection Card Sheet
         AnimatedVisibility(
             visible = scannedResult != null,
@@ -423,7 +558,10 @@ fun ScannerScreen(
                             Text("QR found — you're all set", color = EmeraldGreen, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                         IconButton(
-                            onClick = { scannedResult = null },
+                            onClick = {
+                                scannedResult = null
+                                scannedPhotoThumbnail = null
+                            },
                             modifier = Modifier.size(28.dp)
                         ) {
                             Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = TextMuted)
@@ -432,13 +570,30 @@ fun ScannerScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Text(
-                        text = text,
-                        color = TextPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 3
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (scannedPhotoThumbnail != null) {
+                            Image(
+                                bitmap = scannedPhotoThumbnail!!.asImageBitmap(),
+                                contentDescription = "Scanned Photo",
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(1.dp, CardBorder, RoundedCornerShape(8.dp))
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                        }
+                        Text(
+                            text = text,
+                            color = TextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 3,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -503,6 +658,232 @@ fun ScannerScreen(
             }
         }
     }
+}
+
+private data class DecodedPhotoResult(
+    val text: String,
+    val thumbnail: Bitmap?
+)
+
+/**
+ * Robust photo QR decoder that handles software bitmaps, proper scaling,
+ * inverted QR codes, multiple rotations, and histogram equalized binarization.
+ */
+private fun decodeQrFromGalleryUri(context: Context, uri: Uri): DecodedPhotoResult? {
+    try {
+        // Step 1: Decode a clean software bitmap (max dimension 1600px to avoid memory overflow)
+        val bitmap = loadSoftwareBitmapFromUri(context, uri, maxDimension = 1600) ?: return null
+
+        // Create a crisp thumbnail for the UI confirmation badge
+        val thumbnail = try {
+            val thumbSize = 140
+            Bitmap.createScaledBitmap(bitmap, thumbSize, thumbSize, true)
+        } catch (_: Exception) {
+            null
+        }
+
+        // Step 2: Try multi-pass detection on the scaled photo
+        val decoded1 = scanQrMultiPass(bitmap)
+        if (!decoded1.isNullOrEmpty()) {
+            return DecodedPhotoResult(decoded1, thumbnail)
+        }
+
+        // Step 3: Try downscaling to 800px if the image was larger (ZXing block thresholding works best at 800px)
+        val maxDim = maxOf(bitmap.width, bitmap.height)
+        if (maxDim > 800) {
+            val factor = 800f / maxDim
+            val targetW = (bitmap.width * factor).toInt().coerceAtLeast(1)
+            val targetH = (bitmap.height * factor).toInt().coerceAtLeast(1)
+            val scaledBmp = try {
+                Bitmap.createScaledBitmap(bitmap, targetW, targetH, true)
+            } catch (_: Exception) { null }
+
+            if (scaledBmp != null) {
+                val decoded2 = scanQrMultiPass(scaledBmp)
+                if (!decoded2.isNullOrEmpty()) {
+                    return DecodedPhotoResult(decoded2, thumbnail)
+                }
+            }
+        }
+
+        // Step 4: Fallback to QrScannabilityEvaluator which has additional crop passes
+        val evaluatorResult = QrScannabilityEvaluator.evaluate(bitmap)
+        if (!evaluatorResult.decodedText.isNullOrEmpty()) {
+            return DecodedPhotoResult(evaluatorResult.decodedText, thumbnail)
+        }
+
+        return null
+    } catch (_: Exception) {
+        return null
+    }
+}
+
+/**
+ * Loads a software ARGB_8888 bitmap from content Uri, respecting maximum dimensions.
+ * Never returns a Config#HARDWARE bitmap.
+ */
+private fun loadSoftwareBitmapFromUri(context: Context, uri: Uri, maxDimension: Int): Bitmap? {
+    return try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val src = ImageDecoder.createSource(context.contentResolver, uri)
+            ImageDecoder.decodeBitmap(src) { decoder, info, _ ->
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                decoder.isMutableRequired = true
+                val w = info.size.width
+                val h = info.size.height
+                val maxDim = maxOf(w, h)
+                if (maxDim > maxDimension) {
+                    val scale = maxDimension.toFloat() / maxDim
+                    decoder.setTargetSize(
+                        (w * scale).toInt().coerceAtLeast(1),
+                        (h * scale).toInt().coerceAtLeast(1)
+                    )
+                }
+            }
+        } else {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(uri)?.use { s ->
+                BitmapFactory.decodeStream(s, null, bounds)
+            }
+            val w = bounds.outWidth
+            val h = bounds.outHeight
+            var sample = 1
+            val maxDim = maxOf(w, h)
+            while (maxDim / (sample * 2) >= maxDimension) {
+                sample *= 2
+            }
+            val opts = BitmapFactory.Options().apply {
+                inSampleSize = sample
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+            context.contentResolver.openInputStream(uri)?.use { s ->
+                BitmapFactory.decodeStream(s, null, opts)
+            }
+        }
+    } catch (_: Exception) {
+        try {
+            context.contentResolver.openInputStream(uri)?.use { s ->
+                BitmapFactory.decodeStream(s)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+}
+
+/**
+ * Multi-pass decoder running Hybrid, Inverted, GlobalHistogram, and rotational scans.
+ */
+private fun scanQrMultiPass(bmp: Bitmap): String? {
+    val safeBmp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bmp.config == Bitmap.Config.HARDWARE) {
+        bmp.copy(Bitmap.Config.ARGB_8888, false) ?: bmp
+    } else {
+        bmp
+    }
+
+    val width = safeBmp.width
+    val height = safeBmp.height
+    val pixels = IntArray(width * height)
+    safeBmp.getPixels(pixels, 0, width, 0, 0, width, height)
+
+    // Blend transparent pixels onto white background to avoid black alpha blocks
+    for (i in pixels.indices) {
+        val pixel = pixels[i]
+        val a = (pixel ushr 24) and 0xFF
+        if (a < 255) {
+            val r = (pixel ushr 16) and 0xFF
+            val g = (pixel ushr 8) and 0xFF
+            val b = pixel and 0xFF
+            val blendedR = (r * a + 255 * (255 - a)) / 255
+            val blendedG = (g * a + 255 * (255 - a)) / 255
+            val blendedB = (b * a + 255 * (255 - a)) / 255
+            pixels[i] = (0xFF shl 24) or (blendedR shl 16) or (blendedG shl 8) or blendedB
+        }
+    }
+
+    val source = RGBLuminanceSource(width, height, pixels)
+    val reader = MultiFormatReader().apply {
+        setHints(mapOf(
+            DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
+            DecodeHintType.TRY_HARDER to true,
+            DecodeHintType.CHARACTER_SET to "UTF-8"
+        ))
+    }
+
+    // Pass 1: HybridBinarizer (standard contrast)
+    try {
+        val result = reader.decodeWithState(BinaryBitmap(HybridBinarizer(source)))
+        reader.reset()
+        if (!result.text.isNullOrEmpty()) return result.text
+    } catch (_: Exception) { reader.reset() }
+
+    // Pass 2: Inverted HybridBinarizer (light QR on dark background / dark mode screenshots)
+    try {
+        val result = reader.decodeWithState(BinaryBitmap(HybridBinarizer(source.invert())))
+        reader.reset()
+        if (!result.text.isNullOrEmpty()) return result.text
+    } catch (_: Exception) { reader.reset() }
+
+    // Pass 3: GlobalHistogramBinarizer (smooth gradients, glare, photographic halftone)
+    try {
+        val result = reader.decodeWithState(BinaryBitmap(GlobalHistogramBinarizer(source)))
+        reader.reset()
+        if (!result.text.isNullOrEmpty()) return result.text
+    } catch (_: Exception) { reader.reset() }
+
+    // Pass 4: Inverted GlobalHistogramBinarizer
+    try {
+        val result = reader.decodeWithState(BinaryBitmap(GlobalHistogramBinarizer(source.invert())))
+        reader.reset()
+        if (!result.text.isNullOrEmpty()) return result.text
+    } catch (_: Exception) { reader.reset() }
+
+    // Pass 5: Rotations (90, 180, 270)
+    val matrix = Matrix()
+    for (angle in floatArrayOf(90f, 180f, 270f)) {
+        try {
+            matrix.setRotate(angle)
+            val rotatedBmp = Bitmap.createBitmap(safeBmp, 0, 0, width, height, matrix, true)
+            val rW = rotatedBmp.width
+            val rH = rotatedBmp.height
+            val rPixels = IntArray(rW * rH)
+            rotatedBmp.getPixels(rPixels, 0, rW, 0, 0, rW, rH)
+            val rSource = RGBLuminanceSource(rW, rH, rPixels)
+            try {
+                val res = reader.decodeWithState(BinaryBitmap(HybridBinarizer(rSource)))
+                reader.reset()
+                if (!res.text.isNullOrEmpty()) return res.text
+            } catch (_: Exception) { reader.reset() }
+            try {
+                val res = reader.decodeWithState(BinaryBitmap(GlobalHistogramBinarizer(rSource)))
+                reader.reset()
+                if (!res.text.isNullOrEmpty()) return res.text
+            } catch (_: Exception) { reader.reset() }
+        } catch (_: Exception) {}
+    }
+
+    // Pass 6: Center crop (70% center crop to isolate centered QR code from busy photo margins)
+    try {
+        val cropW = (width * 0.70f).toInt()
+        val cropH = (height * 0.70f).toInt()
+        val cropX = (width - cropW) / 2
+        val cropY = (height - cropH) / 2
+        if (cropW > 80 && cropH > 80) {
+            val croppedSource = source.crop(cropX, cropY, cropW, cropH)
+            try {
+                val result = reader.decodeWithState(BinaryBitmap(HybridBinarizer(croppedSource)))
+                reader.reset()
+                if (!result.text.isNullOrEmpty()) return result.text
+            } catch (_: Exception) { reader.reset() }
+            try {
+                val result = reader.decodeWithState(BinaryBitmap(GlobalHistogramBinarizer(croppedSource)))
+                reader.reset()
+                if (!result.text.isNullOrEmpty()) return result.text
+            } catch (_: Exception) { reader.reset() }
+        }
+    } catch (_: Exception) {}
+
+    return null
 }
 
 /**

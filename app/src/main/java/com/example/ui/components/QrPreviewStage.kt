@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,8 +21,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
@@ -29,6 +32,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,7 +41,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,10 +88,22 @@ fun QrPreviewStage(
     payloadText: String,
     modifier: Modifier = Modifier,
     photoBitmap: Bitmap? = null,
-    onRemovePhoto: (() -> Unit)? = null
+    onRemovePhoto: (() -> Unit)? = null,
+    onSaveCustomPreset: (() -> Unit)? = null
 ) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+    var showResolutionPicker by remember { mutableStateOf(false) }
+    var selectedRes by remember { mutableStateOf(2048) }
+    var justSavedHistory by remember { mutableStateOf(false) }
+    var showKofiModal by remember { mutableStateOf(false) }
+
+    LaunchedEffect(justSavedHistory) {
+        if (justSavedHistory) {
+            delay(2500)
+            justSavedHistory = false
+        }
+    }
 
     Surface(
         modifier = modifier
@@ -255,13 +278,35 @@ fun QrPreviewStage(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Export Actions: Row 1 (Primary Exports: 2048px PNG + Vector SVG)
+            // Pro Export Suite Header Badge
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "PRO EXPORT SUITE",
+                    color = ElectricCyan,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+                Text(
+                    text = "512px to 4096px Ultra HD · Vector SVG",
+                    color = TextMuted,
+                    fontSize = 10.sp
+                )
+            }
+
+            // Export Actions: Row 1 (Primary Exports: Multi-Res PNG + Vector SVG)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = { onExportPng(2048) },
+                    onClick = { showResolutionPicker = true },
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp)
@@ -271,29 +316,54 @@ fun QrPreviewStage(
                     contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
                     Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("2048px PNG", fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("${selectedRes}px PNG", fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
                 }
 
-                OutlinedButton(
-                    onClick = onExportSvg,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp)
-                        .testTag("export_svg_button"),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp)
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Icon(Icons.Default.Code, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Vector SVG", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
+                    OutlinedButton(
+                        onClick = {
+                            onExportSvg()
+                            showKofiModal = true
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp)
+                            .testTag("export_svg_button"),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp)
+                    ) {
+                        Icon(Icons.Default.Code, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Vector SVG", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1)
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            onCopySvg()
+                            showKofiModal = true
+                        },
+                        modifier = Modifier
+                            .width(44.dp)
+                            .height(44.dp)
+                            .testTag("copy_svg_button"),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy SVG Markup", tint = TextSecondary, modifier = Modifier.size(16.dp))
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Export Actions: Row 2 (Secondary Actions: Share Artwork + Save Design)
+            // Export Actions: Row 2 (Secondary Actions: Share Artwork + Save Preset + Save Design)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -306,26 +376,66 @@ fun QrPreviewStage(
                         .testTag("share_button"),
                     border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
                     shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 6.dp)
                 ) {
-                    Icon(Icons.Default.Share, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(15.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Share Artwork", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 11.sp, maxLines = 1)
+                    Icon(Icons.Default.Share, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Share", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 11.sp, maxLines = 1)
+                }
+
+                if (onSaveCustomPreset != null) {
+                    OutlinedButton(
+                        onClick = onSaveCustomPreset,
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .height(40.dp)
+                            .testTag("save_custom_preset_stage_button"),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldGreen.copy(alpha = 0.6f)),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = EmeraldGreen.copy(alpha = 0.10f)),
+                        contentPadding = PaddingValues(horizontal = 6.dp)
+                    ) {
+                        Icon(Icons.Default.BookmarkAdd, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Save as Preset", color = EmeraldGreen, fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1)
+                    }
                 }
 
                 OutlinedButton(
-                    onClick = onSaveHistory,
+                    onClick = {
+                        onSaveHistory()
+                        justSavedHistory = true
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .height(40.dp)
                         .testTag("save_history_button"),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (justSavedHistory) EmeraldGreen else CardBorder
+                    ),
                     shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp)
+                    colors = if (justSavedHistory) {
+                        ButtonDefaults.outlinedButtonColors(containerColor = EmeraldGreen.copy(alpha = 0.15f))
+                    } else {
+                        ButtonDefaults.outlinedButtonColors()
+                    },
+                    contentPadding = PaddingValues(horizontal = 6.dp)
                 ) {
-                    Icon(Icons.Default.BookmarkAdd, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(15.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Save Design", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 11.sp, maxLines = 1)
+                    Icon(
+                        imageVector = if (justSavedHistory) Icons.Default.Check else Icons.Default.BookmarkAdd,
+                        contentDescription = null,
+                        tint = if (justSavedHistory) EmeraldGreen else TextPrimary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (justSavedHistory) "Saved!" else "Save Design",
+                        color = if (justSavedHistory) EmeraldGreen else TextPrimary,
+                        fontWeight = if (justSavedHistory) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 11.sp,
+                        maxLines = 1
+                    )
                 }
             }
 
@@ -359,5 +469,75 @@ fun QrPreviewStage(
                 }
             }
         }
+    }
+
+    if (showResolutionPicker) {
+        AlertDialog(
+            onDismissRequest = { showResolutionPicker = false },
+            title = {
+                Text("Select PNG Export Resolution", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Choose the image output dimensions for your artwork:",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+
+                    listOf(
+                        Triple(512, "512 × 512 px (Compact)", "Messaging & Social Avatars"),
+                        Triple(1024, "1024 × 1024 px", "Web & Digital Displays"),
+                        Triple(2048, "2048 × 2048 px (HD)", "Flyers, Menus & Displays (Recommended)"),
+                        Triple(4096, "4096 × 4096 px (Ultra)", "300 DPI High-Res Posters & Print")
+                    ).forEach { (res, label, desc) ->
+                        val isSelected = selectedRes == res
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, if (isSelected) ElectricCyan else CardBorder, RoundedCornerShape(12.dp))
+                                .clickable {
+                                    selectedRes = res
+                                    onExportPng(res)
+                                    showResolutionPicker = false
+                                    showKofiModal = true
+                                },
+                            color = if (isSelected) ElectricCyan.copy(alpha = 0.15f) else SurfaceDark
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = label,
+                                        color = if (isSelected) ElectricCyan else TextPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                    Text(text = desc, color = TextMuted, fontSize = 11.sp)
+                                }
+                                if (isSelected) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showResolutionPicker = false }) {
+                    Text("Cancel", color = TextMuted)
+                }
+            },
+            containerColor = CardDark
+        )
+    }
+
+    if (showKofiModal) {
+        KofiDownloadPopup(onDismiss = { showKofiModal = false })
     }
 }

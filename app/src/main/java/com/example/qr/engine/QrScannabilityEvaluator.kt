@@ -26,10 +26,15 @@ data class AutoFixResult(
 object QrScannabilityEvaluator {
 
     fun evaluate(bitmap: Bitmap): ScanCheckResult {
-        val width = bitmap.width
-        val height = bitmap.height
+        val safeBitmap = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && bitmap.config == Bitmap.Config.HARDWARE) {
+            bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
+        } else {
+            bitmap
+        }
+        val width = safeBitmap.width
+        val height = safeBitmap.height
         val pixels = IntArray(width * height)
-        bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+        safeBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
 
         // Flatten transparent / semi-transparent pixels onto white background
         // Prevents RGBLuminanceSource from misinterpreting alpha=0 as black ink
@@ -121,7 +126,7 @@ object QrScannabilityEvaluator {
         // dramatically better at 480px on stylized modules than at 1024px.
         try {
             val targetSize = 480
-            val scaledBmp = Bitmap.createScaledBitmap(bitmap, targetSize, targetSize, true)
+            val scaledBmp = Bitmap.createScaledBitmap(safeBitmap, targetSize, targetSize, true)
             val scaledPixels = IntArray(targetSize * targetSize)
             scaledBmp.getPixels(scaledPixels, 0, targetSize, 0, 0, targetSize, targetSize)
             for (i in scaledPixels.indices) {
