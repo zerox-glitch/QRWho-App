@@ -1,0 +1,6 @@
+{
+  "name": "QRWho",
+  "description": "Generate stunning, camera-scannable art and photo-woven QR codes with custom styling, live scannability verification, and camera scanner.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "none",
+    "label": "None",
+    "hint": "Just the code, edge to edge"
+  },
+  {
+    "id": "soft",
+    "label": "Soft",
+    "hint": "A thin, quiet border"
+  },
+  {
+    "id": "ticket",
+    "label": "Ticket",
+    "hint": "Rounded ticket with punched side notches"
+  },
+  {
+    "id": "corners",
+    "label": "Scan corners",
+    "hint": "Four camera-style corner brackets"
+  },
+  {
+    "id": "neon",
+    "label": "Neon ring",
+    "hint": "A glowing accent ring around the code"
+  },
+  {
+    "id": "vintage",
+    "label": "Vintage",
+    "hint": "A double rule with corner squares"
+  },
+  {
+    "id": "dots",
+    "label": "Dot ring",
+    "hint": "A ring of dots — playful print feel"
+  },
+  {
+    "id": "gradient",
+    "label": "Gradient",
+    "hint": "A border fading through the accent"
+  }
+]

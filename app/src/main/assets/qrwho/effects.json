@@ -1,0 +1,26 @@
+[
+  {
+    "id": "none",
+    "label": "None"
+  },
+  {
+    "id": "shadow",
+    "label": "Shadow"
+  },
+  {
+    "id": "outline",
+    "label": "Outline"
+  },
+  {
+    "id": "emboss",
+    "label": "Emboss"
+  },
+  {
+    "id": "extrude",
+    "label": "3D"
+  },
+  {
+    "id": "glow",
+    "label": "Glow"
+  }
+]

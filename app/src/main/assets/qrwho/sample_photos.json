@@ -1,0 +1,62 @@
+[
+  {
+    "id": "mountain",
+    "name": "Summit",
+    "src": "/samples/mountain.jpg"
+  },
+  {
+    "id": "lake",
+    "name": "Lake",
+    "src": "/samples/lake.jpg"
+  },
+  {
+    "id": "peony",
+    "name": "Peony",
+    "src": "/samples/peony.jpg"
+  },
+  {
+    "id": "ink",
+    "name": "Ink",
+    "src": "/samples/ink.jpg"
+  },
+  {
+    "id": "dunes",
+    "name": "Dunes",
+    "src": "/samples/dunes.jpg"
+  },
+  {
+    "id": "dusk",
+    "name": "Dusk",
+    "src": "/samples/dusk.jpg"
+  },
+  {
+    "id": "mist",
+    "name": "Mist",
+    "src": "/samples/mist.jpg"
+  },
+  {
+    "id": "aurora",
+    "name": "Aurora",
+    "src": "/samples/aurora.jpg"
+  },
+  {
+    "id": "silk",
+    "name": "Silk",
+    "src": "/samples/silk.jpg"
+  },
+  {
+    "id": "blossom",
+    "name": "Blossom",
+    "src": "/samples/blossom.jpg"
+  },
+  {
+    "id": "marble",
+    "name": "Marble",
+    "src": "/samples/marble.jpg"
+  },
+  {
+    "id": "tide",
+    "name": "Tide",
+    "src": "/samples/tide.jpg"
+  }
+]

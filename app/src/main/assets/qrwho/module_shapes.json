@@ -1,0 +1,82 @@
+[
+  {
+    "id": "square",
+    "label": "Square"
+  },
+  {
+    "id": "rounded",
+    "label": "Round"
+  },
+  {
+    "id": "squircle",
+    "label": "Soft"
+  },
+  {
+    "id": "dots",
+    "label": "Dots"
+  },
+  {
+    "id": "fluid",
+    "label": "Fluid"
+  },
+  {
+    "id": "classy",
+    "label": "Classy"
+  },
+  {
+    "id": "diamond",
+    "label": "Diamond"
+  },
+  {
+    "id": "hex",
+    "label": "Hex"
+  },
+  {
+    "id": "star",
+    "label": "Star"
+  },
+  {
+    "id": "plus",
+    "label": "Plus"
+  },
+  {
+    "id": "leaf",
+    "label": "Leaf"
+  },
+  {
+    "id": "heart",
+    "label": "Heart"
+  },
+  {
+    "id": "confetti",
+    "label": "Confetti"
+  },
+  {
+    "id": "dash",
+    "label": "Dash"
+  },
+  {
+    "id": "cross",
+    "label": "Cross"
+  },
+  {
+    "id": "diag",
+    "label": "Streak"
+  },
+  {
+    "id": "radial",
+    "label": "Burst"
+  },
+  {
+    "id": "bubbles",
+    "label": "Bubbles"
+  },
+  {
+    "id": "hbar",
+    "label": "H-bars"
+  },
+  {
+    "id": "vbar",
+    "label": "V-bars"
+  }
+]

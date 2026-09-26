@@ -1,0 +1,42 @@
+[
+  {
+    "id": "square",
+    "label": "Square"
+  },
+  {
+    "id": "rounded",
+    "label": "Round"
+  },
+  {
+    "id": "extra-rounded",
+    "label": "Soft"
+  },
+  {
+    "id": "circle",
+    "label": "Circle"
+  },
+  {
+    "id": "classy",
+    "label": "Classy"
+  },
+  {
+    "id": "diamond",
+    "label": "Diamond"
+  },
+  {
+    "id": "leaf",
+    "label": "Leaf"
+  },
+  {
+    "id": "hex",
+    "label": "Hex"
+  },
+  {
+    "id": "target",
+    "label": "Target"
+  },
+  {
+    "id": "ticks",
+    "label": "Ticks"
+  }
+]

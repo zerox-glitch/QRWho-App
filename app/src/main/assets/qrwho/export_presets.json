@@ -1,0 +1,124 @@
+[
+  {
+    "id": "phone",
+    "label": "Phone screen",
+    "hint": "Stories, chats, lock-screen",
+    "caption": "",
+    "exportPx": 1080,
+    "printNote": "1080px · on-screen only",
+    "patch": {
+      "quietZone": 2,
+      "ecc": "M",
+      "contrast": 0.68,
+      "minVersion": 5,
+      "transparentBg": false
+    }
+  },
+  {
+    "id": "card",
+    "label": "Business card",
+    "hint": "Keep it tiny and high-contrast",
+    "caption": "",
+    "exportPx": 1200,
+    "printNote": "4.0″ at 300 dpi",
+    "patch": {
+      "quietZone": 3,
+      "ecc": "H",
+      "contrast": 0.86,
+      "dotScale": 0.82,
+      "minVersion": 5,
+      "transparentBg": false
+    }
+  },
+  {
+    "id": "menu",
+    "label": "Restaurant menu",
+    "hint": "Table tents and paper menus",
+    "caption": "SCAN FOR MENU",
+    "exportPx": 2048,
+    "printNote": "6.8″ at 300 dpi",
+    "patch": {
+      "quietZone": 3,
+      "ecc": "H",
+      "contrast": 0.8,
+      "minVersion": 6,
+      "transparentBg": false
+    }
+  },
+  {
+    "id": "poster",
+    "label": "Poster / flyer",
+    "hint": "Walls, A3, event boards",
+    "caption": "SCAN ME",
+    "exportPx": 4096,
+    "printNote": "13.7″ at 300 dpi",
+    "patch": {
+      "quietZone": 4,
+      "ecc": "H",
+      "contrast": 0.84,
+      "minVersion": 6,
+      "transparentBg": false
+    }
+  },
+  {
+    "id": "packaging",
+    "label": "Packaging",
+    "hint": "Boxes, bottles, hangtags",
+    "caption": "",
+    "exportPx": 2048,
+    "printNote": "6.8″ at 300 dpi",
+    "patch": {
+      "quietZone": 4,
+      "ecc": "H",
+      "contrast": 0.9,
+      "dotScale": 0.86,
+      "minVersion": 7,
+      "transparentBg": false
+    }
+  },
+  {
+    "id": "storefront",
+    "label": "Storefront",
+    "hint": "Window vinyl, larger throw",
+    "caption": "SCAN ME",
+    "exportPx": 4096,
+    "printNote": "13.7″ at 300 dpi",
+    "patch": {
+      "quietZone": 4,
+      "ecc": "H",
+      "contrast": 0.88,
+      "minVersion": 6,
+      "transparentBg": false
+    }
+  },
+  {
+    "id": "event",
+    "label": "Event",
+    "hint": "Tickets, badges, invites",
+    "caption": "SCAN TO JOIN",
+    "exportPx": 2048,
+    "printNote": "6.8″ at 300 dpi",
+    "patch": {
+      "quietZone": 3,
+      "ecc": "H",
+      "contrast": 0.8,
+      "minVersion": 6,
+      "transparentBg": false
+    }
+  },
+  {
+    "id": "social",
+    "label": "Social post",
+    "hint": "Square 1080 for feeds",
+    "caption": "",
+    "exportPx": 1080,
+    "printNote": "1080×1080 · Instagram / TikTok",
+    "patch": {
+      "quietZone": 2,
+      "ecc": "Q",
+      "contrast": 0.72,
+      "minVersion": 5,
+      "transparentBg": false
+    }
+  }
+]
