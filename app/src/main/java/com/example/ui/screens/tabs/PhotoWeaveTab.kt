@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
@@ -67,6 +68,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.qr.engine.BuiltInLogos
@@ -295,16 +298,26 @@ fun PhotoWeaveTab(
         }
 
         // 3. Center Logo Gallery & Custom Logo
+        var selectedLogoCategory by remember { mutableStateOf("All") }
+        val logoCategories = listOf("All", "Social", "Daily Life", "Payment", "Symbols")
+        val filteredLogos = remember(selectedLogoCategory) {
+            if (selectedLogoCategory == "All") BuiltInLogos.list
+            else BuiltInLogos.list.filter { it.category.equals(selectedLogoCategory, ignoreCase = true) }
+        }
+
         Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Center logo (${BuiltInLogos.list.size} marks)", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Center Logo", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("(${BuiltInLogos.list.size} marks)", color = TextMuted, fontSize = 11.sp)
+                }
                 if (logoBitmap != null || style.selectedLogoId != null) {
                     Text(
-                        text = "Remove logo",
+                        text = "Remove logo ✕",
                         color = BeaconRose,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -314,59 +327,202 @@ fun PhotoWeaveTab(
                                 onCustomLogoSelected(null)
                                 onBuiltInLogoSelected(null)
                             }
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
             }
+
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Logo horizontal grid
+            // Logo Category Filter Chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                logoCategories.forEach { cat ->
+                    val isCatSelected = selectedLogoCategory == cat
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (isCatSelected) ElectricCyan.copy(alpha = 0.20f) else SurfaceDark)
+                            .border(1.dp, if (isCatSelected) ElectricCyan else CardBorder, RoundedCornerShape(16.dp))
+                            .clickable { selectedLogoCategory = cat }
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = cat,
+                            color = if (isCatSelected) ElectricCyan else TextSecondary,
+                            fontSize = 11.sp,
+                            fontWeight = if (isCatSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Logo Horizontal Grid with Actual Graphics
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Upload custom logo button
+                // Option 1: None Tile
+                val isNoneSelected = style.selectedLogoId == null && logoBitmap == null
                 Surface(
                     modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                        .width(62.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(
+                            if (isNoneSelected) 1.5.dp else 1.dp,
+                            if (isNoneSelected) ElectricCyan else CardBorder,
+                            RoundedCornerShape(12.dp)
+                        )
+                        .clickable {
+                            onCustomLogoSelected(null)
+                            onBuiltInLogoSelected(null)
+                        },
+                    color = if (isNoneSelected) ElectricCyan.copy(alpha = 0.15f) else CardDark
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(SurfaceDark),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Block,
+                                contentDescription = "None",
+                                tint = if (isNoneSelected) ElectricCyan else TextMuted,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "None",
+                            color = if (isNoneSelected) ElectricCyan else TextSecondary,
+                            fontSize = 10.sp,
+                            fontWeight = if (isNoneSelected) FontWeight.Bold else FontWeight.Normal,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                // Option 2: Upload Custom Logo Tile
+                val isCustomSelected = logoBitmap != null
+                Surface(
+                    modifier = Modifier
+                        .width(62.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(
+                            if (isCustomSelected) 1.5.dp else 1.dp,
+                            if (isCustomSelected) ElectricCyan else CardBorder,
+                            RoundedCornerShape(12.dp)
+                        )
                         .clickable {
                             logoPickerLauncher.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                             )
                         },
-                    color = SurfaceDark
+                    color = if (isCustomSelected) ElectricCyan.copy(alpha = 0.15f) else CardDark
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Add custom logo", tint = TextMuted, modifier = Modifier.size(20.dp))
+                    Column(
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(SurfaceDark),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (logoBitmap != null) {
+                                Image(
+                                    bitmap = logoBitmap.asImageBitmap(),
+                                    contentDescription = "Custom Logo",
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.AddPhotoAlternate,
+                                    contentDescription = "Upload Custom Logo",
+                                    tint = ElectricCyan,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = if (isCustomSelected) "Custom" else "+ Custom",
+                            color = if (isCustomSelected) ElectricCyan else TextPrimary,
+                            fontSize = 10.sp,
+                            fontWeight = if (isCustomSelected) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1
+                        )
                     }
                 }
 
-                BuiltInLogos.list.forEach { logo ->
-                    val isSelected = style.selectedLogoId == logo.id
-                    val border = if (isSelected) ElectricCyan else CardBorder
-                    val bg = if (isSelected) ElectricCyan.copy(alpha = 0.2f) else CardDark
+                // Option 3: Built-in Logos with Actual Graphics
+                filteredLogos.forEach { logo ->
+                    val isSelected = style.selectedLogoId == logo.id && logoBitmap == null
+                    val logoBmp = remember(logo.id) {
+                        BuiltInLogos.createLogoBitmap(logo.id, 96)
+                    }
 
                     Surface(
                         modifier = Modifier
-                            .size(46.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .border(if (isSelected) 2.dp else 1.dp, border, RoundedCornerShape(10.dp))
+                            .width(62.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(
+                                if (isSelected) 2.dp else 1.dp,
+                                if (isSelected) ElectricCyan else CardBorder,
+                                RoundedCornerShape(12.dp)
+                            )
                             .clickable {
                                 onCustomLogoSelected(null)
                                 onBuiltInLogoSelected(logo.id)
                             },
-                        color = bg
+                        color = if (isSelected) ElectricCyan.copy(alpha = 0.15f) else CardDark
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(SurfaceDark),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    bitmap = logoBmp.asImageBitmap(),
+                                    contentDescription = logo.name,
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = logo.name.take(2).uppercase(),
+                                text = logo.name,
                                 color = if (isSelected) ElectricCyan else TextPrimary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
@@ -375,12 +531,13 @@ fun PhotoWeaveTab(
 
             // Logo scale slider if logo is active
             if (logoBitmap != null || style.selectedLogoId != null) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Logo Scale", color = TextSecondary, fontSize = 11.sp)
+                    Text("Center Logo Scale", color = TextSecondary, fontSize = 11.sp)
                     Text("${(style.logoScale * 100).toInt()}%", color = ElectricCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
                 Slider(

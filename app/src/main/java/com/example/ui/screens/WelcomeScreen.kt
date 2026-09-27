@@ -423,6 +423,14 @@ fun WelcomeScreen(
                 // Horizontal Carousel of Signature Designs
                 val featuredPresetIds = remember {
                     listOf(
+                        "art-cyberpunk",
+                        "art-neon-fungi",
+                        "art-sakura",
+                        "art-ukiyo",
+                        "art-royal",
+                        "art-vaporwave",
+                        "art-solarpunk",
+                        "art-aurora-gradient",
                         "tpl-bracket",
                         "tpl-badge",
                         "tpl-arch",
@@ -431,11 +439,7 @@ fun WelcomeScreen(
                         "tpl-floral",
                         "tpl-note",
                         "tpl-card",
-                        "tpl-diamond",
-                        "tpl-halloween",
-                        "tpl-christmas",
-                        "tpl-music",
-                        "tpl-ramadan"
+                        "tpl-diamond"
                     )
                 }
 
@@ -492,6 +496,12 @@ fun WelcomeScreen(
                     color = ElectricCyan,
                     title = "20+ Custom Frame Styles",
                     desc = "Choose from Brackets, Rosette Badges, Cathedral Arches, Coffee Cups, Wax Seals, Notes, and Luggage Tags."
+                ),
+                FeatureItem(
+                    icon = Icons.Default.AutoAwesome,
+                    color = Color(0xFFFFB800),
+                    title = "335+ Designer Presets Library",
+                    desc = "Instant 1-tap access to 335+ camera-verified artistic presets across Cyberpunk, Fungi, Matrix, Sakura, Ocean, Neon, and Frames."
                 ),
                 FeatureItem(
                     icon = Icons.Default.Tune,

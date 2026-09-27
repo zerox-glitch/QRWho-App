@@ -48,6 +48,7 @@ import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.LandingScreen
 import com.example.ui.screens.ScannerScreen
 import com.example.ui.screens.ShowcaseScreen
+import com.example.ui.screens.SplashScreen
 import com.example.ui.screens.StudioScreen
 import com.example.ui.screens.WelcomeScreen
 import com.example.ui.theme.BgDark
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
                 val context = androidx.compose.ui.platform.LocalContext.current
                 val prefs = remember { context.getSharedPreferences("qrwho_prefs", android.content.Context.MODE_PRIVATE) }
                 val hasSeenWelcome = remember { prefs.getBoolean("has_seen_welcome_v1", false) }
+                var showSplashScreen by remember { androidx.compose.runtime.mutableStateOf(true) }
                 var showWelcomeScreen by remember { androidx.compose.runtime.mutableStateOf(!hasSeenWelcome) }
 
                 val viewModel: StudioViewModel = viewModel()
@@ -96,7 +98,11 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (showWelcomeScreen) {
+                if (showSplashScreen) {
+                    SplashScreen(
+                        onFinished = { showSplashScreen = false }
+                    )
+                } else if (showWelcomeScreen) {
                     WelcomeScreen(
                         onStartCreating = {
                             prefs.edit().putBoolean("has_seen_welcome_v1", true).apply()

@@ -2,6 +2,11 @@ package com.example.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -27,6 +33,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FormatPaint
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
@@ -36,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -121,13 +129,23 @@ fun StudioScreen(
         Pair("Vault (${historyList.size})", Icons.Default.Bookmark)
     )
 
-    Column(
+    val showStudioScrollToTop by remember {
+        derivedStateOf {
+            activeTab == 1 && scrollState.value > 250
+        }
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(BgDark)
-            .verticalScroll(scrollState)
-            .padding(16.dp)
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(16.dp)
+        ) {
         // App Header Brand
         Row(
             modifier = Modifier
@@ -486,8 +504,6 @@ fun StudioScreen(
                     3 -> DesignTab(
                         style = style,
                         onStyleChange = { viewModel.updateStyle(it) },
-                        customLogo = customLogo,
-                        onCustomLogoSelected = { viewModel.setCustomLogo(it) },
                         onSaveCustomPreset = { name, desc -> viewModel.saveCustomPreset(name, desc) }
                     )
                     4 -> HistoryTab(
@@ -586,4 +602,37 @@ fun StudioScreen(
             containerColor = CardDark
         )
     }
+
+    // Floating Scroll-To-Top Arrow Button for Presets option
+    AnimatedVisibility(
+        visible = showStudioScrollToTop,
+        enter = fadeIn() + slideInVertically { it / 2 },
+        exit = fadeOut() + slideOutVertically { it / 2 },
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .padding(bottom = 24.dp, end = 20.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(SurfaceDark.copy(alpha = 0.78f))
+                .border(1.5.dp, ElectricCyan.copy(alpha = 0.75f), CircleShape)
+                .clickable {
+                    coroutineScope.launch {
+                        scrollState.animateScrollTo(0)
+                    }
+                }
+                .testTag("studio_presets_scroll_to_top_button"),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowUp,
+                contentDescription = "Scroll to top",
+                tint = ElectricCyan,
+                modifier = Modifier.size(26.dp)
+            )
+        }
+    }
+}
 }

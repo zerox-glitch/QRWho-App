@@ -81,8 +81,6 @@ import com.example.ui.theme.TextSecondary
 fun DesignTab(
     style: QrStyle,
     onStyleChange: (QrStyle) -> Unit,
-    customLogo: Bitmap? = null,
-    onCustomLogoSelected: (Bitmap?) -> Unit = {},
     onSaveCustomPreset: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
@@ -91,26 +89,6 @@ fun DesignTab(
     var showSaveDialog by remember { mutableStateOf(false) }
     var presetName by remember { mutableStateOf("") }
     var presetDesc by remember { mutableStateOf("") }
-
-    val logoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            try {
-                val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    val src = ImageDecoder.createSource(context.contentResolver, uri)
-                    ImageDecoder.decodeBitmap(src) { decoder, _, _ ->
-                        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                        decoder.isMutableRequired = true
-                    }
-                } else {
-                    @Suppress("DEPRECATION")
-                    MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-                }
-                onCustomLogoSelected(bitmap)
-            } catch (_: Exception) {}
-        }
-    }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -439,68 +417,6 @@ fun DesignTab(
                     label = { Text("Frame Caption", color = TextMuted) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        // 8. Center Brand Logos
-        Column {
-            Text("Center Brand Logo", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val isNone = style.selectedLogoId == null
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (isNone) ElectricCyan.copy(alpha = 0.2f) else CardDark)
-                        .border(1.dp, if (isNone) ElectricCyan else CardBorder, RoundedCornerShape(10.dp))
-                        .clickable { onStyleChange(style.copy(selectedLogoId = null)) }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("None", color = if (isNone) ElectricCyan else TextPrimary, fontSize = 12.sp)
-                }
-
-                BuiltInLogos.list.forEach { logo ->
-                    val isSelected = style.selectedLogoId == logo.id
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (isSelected) ElectricCyan.copy(alpha = 0.2f) else CardDark)
-                            .border(1.dp, if (isSelected) ElectricCyan else CardBorder, RoundedCornerShape(10.dp))
-                            .clickable { onStyleChange(style.copy(selectedLogoId = logo.id)) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = logo.name,
-                            color = if (isSelected) ElectricCyan else TextPrimary,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-
-            if (style.selectedLogoId != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Center Logo Scale", color = TextPrimary, fontSize = 12.sp)
-                    Text("${(style.logoScale * 100).toInt()}%", color = ElectricCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-                Slider(
-                    value = style.logoScale,
-                    onValueChange = { onStyleChange(style.copy(logoScale = it)) },
-                    valueRange = 0.15f..0.30f
                 )
             }
         }

@@ -1,6 +1,11 @@
 package com.example.ui.screens
 
 import android.graphics.Bitmap
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,12 +27,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -41,10 +48,12 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +80,7 @@ import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import kotlinx.coroutines.launch
 
 @Composable
 fun ShowcaseScreen(
@@ -82,6 +92,14 @@ fun ShowcaseScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
     var displayCount by remember { mutableIntStateOf(30) }
+
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    val showScrollToTop by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 250
+        }
+    }
 
     val allPresets = QrPresets.list
     val categories = remember(favoriteIds.size) {
@@ -113,133 +131,138 @@ fun ShowcaseScreen(
         filteredPresets.take(displayCount)
     }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(BgDark)
-            .padding(16.dp)
     ) {
-        // Header
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Box(
+            // Header
+            Row(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(NeonViolet.copy(alpha = 0.2f))
-                    .border(1.dp, NeonViolet, RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Palette, contentDescription = "Showcase", tint = NeonViolet, modifier = Modifier.size(22.dp))
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text("Art Gallery & Showcase", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                Text(
-                    text = "Complete gallery of ${allPresets.size} camera-verified artistic presets",
-                    color = TextSecondary,
-                    fontSize = 12.sp
-                )
-            }
-        }
-
-        // Search Input Bar
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            placeholder = { Text("Search ${allPresets.size}+ designer presets...", color = TextMuted, fontSize = 13.sp) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextMuted, modifier = Modifier.size(16.dp))
-                    }
-                }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = SurfaceDark,
-                unfocusedContainerColor = SurfaceDark,
-                focusedBorderColor = ElectricCyan,
-                unfocusedBorderColor = CardBorder,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("showcase_search_input")
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Category Horizontal Scroll Chips
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            categories.forEach { cat ->
-                val isFavChip = cat.startsWith("★ Favorites")
-                val isSelected = if (isFavChip) selectedCategory.startsWith("★ Favorites") else selectedCategory == cat
-                val accentColor = if (isFavChip) Color(0xFFFFB800) else ElectricCyan
-                val bg = if (isSelected) accentColor.copy(alpha = 0.22f) else CardDark
-                val border = if (isSelected) accentColor else if (isFavChip) accentColor.copy(alpha = 0.45f) else CardBorder
-
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(bg)
-                        .border(1.dp, border, RoundedCornerShape(20.dp))
-                        .clickable { selectedCategory = cat }
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(NeonViolet.copy(alpha = 0.2f))
+                        .border(1.dp, NeonViolet, RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
                 ) {
+                    Icon(Icons.Default.Palette, contentDescription = "Showcase", tint = NeonViolet, modifier = Modifier.size(22.dp))
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Art Gallery & Showcase", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
                     Text(
-                        text = cat,
-                        color = if (isSelected) accentColor else if (isFavChip) accentColor.copy(alpha = 0.85f) else TextSecondary,
-                        fontSize = 12.sp,
-                        fontWeight = if (isSelected || isFavChip) FontWeight.Bold else FontWeight.Normal
+                        text = "Complete gallery of ${allPresets.size} camera-verified artistic presets",
+                        color = TextSecondary,
+                        fontSize = 12.sp
                     )
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Status Count Bar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Showing ${visiblePresets.size} of ${filteredPresets.size} styles",
-                color = TextMuted,
-                fontSize = 11.sp
+            // Search Input Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Search ${allPresets.size}+ designer presets...", color = TextMuted, fontSize = 13.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextMuted, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = SurfaceDark,
+                    unfocusedContainerColor = SurfaceDark,
+                    focusedBorderColor = ElectricCyan,
+                    unfocusedBorderColor = CardBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("showcase_search_input")
             )
-            if (filteredPresets.isNotEmpty()) {
-                Text(
-                    text = "Tap any style to load in Studio",
-                    color = ElectricCyan,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
-                )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Category Horizontal Scroll Chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                categories.forEach { cat ->
+                    val isFavChip = cat.startsWith("★ Favorites")
+                    val isSelected = if (isFavChip) selectedCategory.startsWith("★ Favorites") else selectedCategory == cat
+                    val accentColor = if (isFavChip) Color(0xFFFFB800) else ElectricCyan
+                    val bg = if (isSelected) accentColor.copy(alpha = 0.22f) else CardDark
+                    val border = if (isSelected) accentColor else if (isFavChip) accentColor.copy(alpha = 0.45f) else CardBorder
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(bg)
+                            .border(1.dp, border, RoundedCornerShape(20.dp))
+                            .clickable { selectedCategory = cat }
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = cat,
+                            color = if (isSelected) accentColor else if (isFavChip) accentColor.copy(alpha = 0.85f) else TextSecondary,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected || isFavChip) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-        // Complete Gallery Cards List
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 80.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
+            // Status Count Bar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Showing ${visiblePresets.size} of ${filteredPresets.size} styles",
+                    color = TextMuted,
+                    fontSize = 11.sp
+                )
+                if (filteredPresets.isNotEmpty()) {
+                    Text(
+                        text = "Tap any style to load in Studio",
+                        color = ElectricCyan,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Complete Gallery Cards List
+            LazyColumn(
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 80.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
             if (visiblePresets.isEmpty()) {
                 item {
                     Surface(
@@ -324,6 +347,39 @@ fun ShowcaseScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+
+        // Floating Scroll-To-Top Arrow Button
+        AnimatedVisibility(
+            visible = showScrollToTop,
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + slideOutVertically { it / 2 },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 24.dp, end = 20.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceDark.copy(alpha = 0.78f))
+                    .border(1.5.dp, ElectricCyan.copy(alpha = 0.75f), CircleShape)
+                    .clickable {
+                        coroutineScope.launch {
+                            listState.animateScrollToItem(0)
+                        }
+                    }
+                    .testTag("showcase_scroll_to_top_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowUp,
+                    contentDescription = "Scroll to top",
+                    tint = ElectricCyan,
+                    modifier = Modifier.size(26.dp)
+                )
             }
         }
     }
