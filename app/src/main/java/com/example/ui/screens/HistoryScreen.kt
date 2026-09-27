@@ -58,6 +58,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import android.widget.Toast
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.OpenInBrowser
+import com.example.qr.engine.PayloadKind
+import com.example.qr.engine.QrContentParser
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -611,38 +616,72 @@ fun HistoryItemCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Card Bottom Actions: Open in Studio + Share
+            // Card Bottom Actions: Primary Action / Open in Studio / Share
+            val context = LocalContext.current
+            val parsedAction = remember(item.encodedText) { QrContentParser.parse(item.encodedText) }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (parsedAction.isLocation || parsedAction.isUrl || parsedAction.kind != PayloadKind.TEXT) {
+                    Button(
+                        onClick = {
+                            QrContentParser.openPrimaryAction(context, item.encodedText, parsedAction) {
+                                Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (parsedAction.isLocation) ElectricCyan else EmeraldGreen,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier
+                            .weight(1.1f)
+                            .height(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = parsedAction.primaryButtonIcon,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (parsedAction.isLocation) "Open in Maps" else if (parsedAction.isUrl) "Open Link" else parsedAction.primaryButtonLabel.take(12),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
                 Button(
                     onClick = onOpenInStudio,
-                    colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan, contentColor = Color(0xFF0C0C0B)),
+                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceDark, contentColor = ElectricCyan),
                     shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier
                         .weight(1f)
                         .height(36.dp)
                 ) {
-                    Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Open in Studio", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(14.dp), tint = ElectricCyan)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Studio", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = ElectricCyan)
                 }
 
                 OutlinedButton(
                     onClick = onShare,
                     border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
                     shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(0.9f)
                         .height(36.dp)
                 ) {
                     Icon(Icons.Default.Share, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Share Artwork", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Share", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
                 }
             }
         }

@@ -41,7 +41,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import android.widget.Toast
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.OpenInBrowser
+import com.example.qr.engine.PayloadKind
+import com.example.qr.engine.QrContentParser
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -293,7 +299,28 @@ fun HistoryTab(
                             }
 
                             // Quick Action Buttons
+                            val context = LocalContext.current
+                            val parsedAction = remember(item.encodedText) { QrContentParser.parse(item.encodedText) }
+
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (parsedAction.isLocation || parsedAction.isUrl || parsedAction.kind != PayloadKind.TEXT) {
+                                    IconButton(
+                                        onClick = {
+                                            QrContentParser.openPrimaryAction(context, item.encodedText, parsedAction) {
+                                                Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = parsedAction.primaryButtonIcon,
+                                            contentDescription = parsedAction.primaryButtonLabel,
+                                            tint = if (parsedAction.isLocation) ElectricCyan else EmeraldGreen,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+
                                 IconButton(
                                     onClick = { onShareItem(item) },
                                     modifier = Modifier.size(32.dp)

@@ -395,39 +395,51 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
 
     fun onScannedFromCamera(scannedText: String) {
         val trimmed = scannedText.trim()
-        val detected = when {
-            trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true) -> {
+        val parsed = QrContentParser.parse(trimmed)
+        val detected = when (parsed.kind) {
+            PayloadKind.GEO -> {
+                _payload.value.copy(
+                    kind = PayloadKind.GEO,
+                    geoLat = parsed.geoLatitude ?: _payload.value.geoLat,
+                    geoLng = parsed.geoLongitude ?: _payload.value.geoLng,
+                    geoQuery = parsed.geoQuery ?: parsed.title
+                )
+            }
+            PayloadKind.URL -> {
                 _payload.value.copy(kind = PayloadKind.URL, url = trimmed)
             }
-            trimmed.startsWith("WIFI:", ignoreCase = true) -> {
-                // Parse SSID and Password
+            PayloadKind.WIFI -> {
                 val ssid = Regex("S:([^;]+)").find(trimmed)?.groupValues?.get(1) ?: "WiFi"
                 val pwd = Regex("P:([^;]+)").find(trimmed)?.groupValues?.get(1) ?: ""
                 val enc = Regex("T:([^;]+)").find(trimmed)?.groupValues?.get(1) ?: "WPA"
                 _payload.value.copy(kind = PayloadKind.WIFI, wifiSsid = ssid, wifiPassword = pwd, wifiEncryption = enc)
             }
-            trimmed.startsWith("BEGIN:VCARD", ignoreCase = true) -> {
+            PayloadKind.VCARD -> {
                 val fn = Regex("FN:([^\r\n]+)").find(trimmed)?.groupValues?.get(1) ?: "Contact"
                 val tel = Regex("TEL[^:]*:([^\r\n]+)").find(trimmed)?.groupValues?.get(1) ?: ""
                 val email = Regex("EMAIL[^:]*:([^\r\n]+)").find(trimmed)?.groupValues?.get(1) ?: ""
                 _payload.value.copy(kind = PayloadKind.VCARD, vcardFirstName = fn, vcardLastName = "", vcardPhone = tel, vcardEmail = email)
             }
-            trimmed.startsWith("mailto:", ignoreCase = true) -> {
+            PayloadKind.EMAIL -> {
                 val email = trimmed.removePrefix("mailto:").substringBefore("?")
                 _payload.value.copy(kind = PayloadKind.EMAIL, emailTo = email)
             }
-            trimmed.startsWith("tel:", ignoreCase = true) -> {
+            PayloadKind.PHONE -> {
                 val phone = trimmed.removePrefix("tel:")
                 _payload.value.copy(kind = PayloadKind.PHONE, phoneNumber = phone)
             }
-            trimmed.startsWith("smsto:", ignoreCase = true) -> {
+            PayloadKind.SMS -> {
                 val parts = trimmed.removePrefix("smsto:").split(":")
                 val num = parts.getOrNull(0) ?: ""
                 val msg = parts.getOrNull(1) ?: ""
                 _payload.value.copy(kind = PayloadKind.SMS, smsNumber = num, smsMessage = msg)
             }
-            trimmed.startsWith("geo:", ignoreCase = true) -> {
-                _payload.value.copy(kind = PayloadKind.GEO, geoQuery = trimmed.removePrefix("geo:"))
+            PayloadKind.WHATSAPP -> {
+                val num = Regex("""wa\.me/([0-9+]+)""").find(trimmed)?.groupValues?.get(1) ?: ""
+                _payload.value.copy(kind = PayloadKind.WHATSAPP, waNumber = num)
+            }
+            PayloadKind.PAYMENT -> {
+                _payload.value.copy(kind = PayloadKind.PAYMENT, paymentAddress = trimmed)
             }
             else -> {
                 _payload.value.copy(kind = PayloadKind.TEXT, text = trimmed)
@@ -435,38 +447,17 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
         }
         _payload.value = detected
         recordScannedQr(trimmed)
-        _userMessage.value = "Loaded scanned QR content into Studio!"
+        _userMessage.value = "Loaded ${parsed.title} into Studio!"
         triggerRender()
     }
 
     fun recordScannedQr(text: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val trimmed = text.trim()
-            val (kind, title) = when {
-                trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true) ->
-                    Pair(PayloadKind.URL, trimmed.take(45))
-                trimmed.startsWith("WIFI:", ignoreCase = true) -> {
-                    val ssid = Regex("S:([^;]+)").find(trimmed)?.groupValues?.get(1) ?: "Network"
-                    Pair(PayloadKind.WIFI, "Wi-Fi: $ssid")
-                }
-                trimmed.startsWith("BEGIN:VCARD", ignoreCase = true) -> {
-                    val fn = Regex("FN:([^\r\n]+)").find(trimmed)?.groupValues?.get(1) ?: "Contact"
-                    Pair(PayloadKind.VCARD, "Contact: $fn")
-                }
-                trimmed.startsWith("mailto:", ignoreCase = true) ->
-                    Pair(PayloadKind.EMAIL, "Email: ${trimmed.removePrefix("mailto:").substringBefore("?")}")
-                trimmed.startsWith("tel:", ignoreCase = true) ->
-                    Pair(PayloadKind.PHONE, "Phone: ${trimmed.removePrefix("tel:")}")
-                trimmed.startsWith("smsto:", ignoreCase = true) ->
-                    Pair(PayloadKind.SMS, "SMS: ${trimmed.removePrefix("smsto:").substringBefore(":")}")
-                trimmed.startsWith("geo:", ignoreCase = true) ->
-                    Pair(PayloadKind.GEO, "Map Location")
-                else ->
-                    Pair(PayloadKind.TEXT, trimmed.take(35).ifBlank { "Scanned QR" })
-            }
+            val parsed = QrContentParser.parse(trimmed)
             val entity = QrEntity(
-                title = title,
-                payloadKind = kind.name,
+                title = parsed.title.take(45),
+                payloadKind = parsed.kind.name,
                 payloadRaw = trimmed,
                 encodedText = trimmed,
                 presetName = "Scanned",

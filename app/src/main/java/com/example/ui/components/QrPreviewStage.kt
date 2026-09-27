@@ -533,10 +533,8 @@ fun QrPreviewStage(
                                 .border(1.dp, if (isSelected) ElectricCyan else CardBorder, RoundedCornerShape(12.dp))
                                 .clickable {
                                     selectedRes = res
-                                    onExportPng(res)
-                                    showResolutionPicker = false
-                                    showKofiModal = true
-                                },
+                                }
+                                .testTag("resolution_option_${res}"),
                             color = if (isSelected) ElectricCyan.copy(alpha = 0.15f) else SurfaceDark
                         ) {
                             Row(
@@ -544,7 +542,7 @@ fun QrPreviewStage(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = label,
                                         color = if (isSelected) ElectricCyan else TextPrimary,
@@ -554,10 +552,38 @@ fun QrPreviewStage(
                                     Text(text = desc, color = TextMuted, fontSize = 11.sp)
                                 }
                                 if (isSelected) {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.CheckCircle, contentDescription = "Selected", tint = EmeraldGreen, modifier = Modifier.size(20.dp))
                                 }
                             }
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Explicit Download Button right below resolutions
+                    Button(
+                        onClick = {
+                            onExportPng(selectedRes)
+                            showResolutionPicker = false
+                            showKofiModal = true
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ElectricCyan,
+                            contentColor = Color(0xFF0C0C0B)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp)
+                            .testTag("dialog_download_png_button")
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Download ${selectedRes}px PNG",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
                     }
                 }
             },

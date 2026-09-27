@@ -80,6 +80,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import android.widget.Toast
+import com.example.qr.engine.PayloadKind
+import com.example.qr.engine.QrContentParser
+import com.example.qr.engine.QrParsedAction
 import com.example.qr.engine.QrScannabilityEvaluator
 import com.example.ui.StudioViewModel
 import com.example.ui.theme.BgDark
@@ -533,15 +537,22 @@ fun ScannerScreen(
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             val text = scannedResult ?: ""
+            val parsedAction = remember(text) { QrContentParser.parse(text) }
+
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .border(1.dp, EmeraldGreen, RoundedCornerShape(20.dp)),
+                    .clip(RoundedCornerShape(22.dp))
+                    .border(
+                        1.dp,
+                        if (parsedAction.isLocation) ElectricCyan else EmeraldGreen,
+                        RoundedCornerShape(22.dp)
+                    ),
                 color = CardDark
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
+                    // Header: Status indicator + Badge + Close button
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -552,10 +563,32 @@ fun ScannerScreen(
                                 modifier = Modifier
                                     .size(10.dp)
                                     .clip(CircleShape)
-                                    .background(EmeraldGreen)
+                                    .background(if (parsedAction.isLocation) ElectricCyan else EmeraldGreen)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("QR found — you're all set", color = EmeraldGreen, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(
+                                text = if (parsedAction.isLocation) "Location QR Detected" else "QR Code Scanned",
+                                color = if (parsedAction.isLocation) ElectricCyan else EmeraldGreen,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (parsedAction.isLocation) ElectricCyan.copy(alpha = 0.18f)
+                                        else EmeraldGreen.copy(alpha = 0.18f)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = parsedAction.badgeLabel,
+                                    color = if (parsedAction.isLocation) ElectricCyan else EmeraldGreen,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                         IconButton(
                             onClick = {
@@ -568,8 +601,9 @@ fun ScannerScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
+                    // Body: Thumbnail or Icon + Title + Subtitle
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -580,23 +614,92 @@ fun ScannerScreen(
                                 contentDescription = "Scanned Photo",
                                 modifier = Modifier
                                     .size(48.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .border(1.dp, CardBorder, RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
                             )
                             Spacer(modifier = Modifier.width(12.dp))
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(
+                                        if (parsedAction.isLocation) ElectricCyan.copy(alpha = 0.15f)
+                                        else SurfaceDark
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (parsedAction.isLocation) ElectricCyan.copy(alpha = 0.35f) else CardBorder,
+                                        RoundedCornerShape(10.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = parsedAction.primaryButtonIcon,
+                                    contentDescription = parsedAction.badgeLabel,
+                                    tint = if (parsedAction.isLocation) ElectricCyan else TextPrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
                         }
-                        Text(
-                            text = text,
-                            color = TextPrimary,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 3,
-                            modifier = Modifier.weight(1f)
-                        )
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = parsedAction.title,
+                                color = TextPrimary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = parsedAction.subtitle,
+                                color = TextSecondary,
+                                fontSize = 12.sp,
+                                maxLines = 2,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Primary Action Button (Prominent, High-Contrast)
+                    Button(
+                        onClick = {
+                            QrContentParser.openPrimaryAction(context, text, parsedAction) { toastMsg ->
+                                clipboardManager.setText(AnnotatedString(parsedAction.copyableText))
+                                Toast.makeText(context, toastMsg, Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (parsedAction.isLocation) ElectricCyan else EmeraldGreen,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp)
+                            .testTag("scanner_primary_action_button")
+                    ) {
+                        Icon(
+                            imageVector = parsedAction.primaryButtonIcon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = parsedAction.primaryButtonLabel,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Secondary Action Buttons Row: Remake in Studio + Copy + Done
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -608,38 +711,39 @@ fun ScannerScreen(
                                 onNavigateToStudio()
                             },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = ElectricCyan,
-                                contentColor = Color.Black
+                                containerColor = SurfaceDark,
+                                contentColor = ElectricCyan
                             ),
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
                         ) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = "Remake", modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.AutoAwesome, contentDescription = "Remake", modifier = Modifier.size(15.dp), tint = ElectricCyan)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Remake", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Remake", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = ElectricCyan)
                         }
 
-                        // Copy / Open
+                        // Copy Action Button
                         FilledTonalButton(
                             onClick = {
-                                if (text.startsWith("http://") || text.startsWith("https://")) {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(text))
-                                    context.startActivity(intent)
-                                } else {
-                                    clipboardManager.setText(AnnotatedString(text))
-                                }
+                                clipboardManager.setText(AnnotatedString(parsedAction.copyableText))
+                                Toast.makeText(context, "Copied: ${parsedAction.copyableText.take(30)}", Toast.LENGTH_SHORT).show()
                             },
                             colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = CardBorder,
+                                containerColor = SurfaceDark,
                                 contentColor = TextPrimary
                             ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.height(40.dp)
                         ) {
                             Icon(
-                                if (text.startsWith("http")) Icons.Default.OpenInBrowser else Icons.Default.ContentCopy,
-                                contentDescription = "Action",
-                                modifier = Modifier.size(16.dp)
+                                imageVector = parsedAction.secondaryButtonIcon,
+                                contentDescription = "Copy",
+                                modifier = Modifier.size(15.dp)
                             )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(parsedAction.secondaryButtonLabel, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
 
                         // Stop Camera / Done
@@ -649,7 +753,8 @@ fun ScannerScreen(
                                 containerColor = SurfaceDark,
                                 contentColor = TextPrimary
                             ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.height(40.dp)
                         ) {
                             Text("Done", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
