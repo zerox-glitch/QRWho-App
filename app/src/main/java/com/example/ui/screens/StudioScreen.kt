@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
 import com.example.ui.StudioViewModel
 import com.example.ui.components.QrPreviewStage
+import com.example.ui.components.StickyLiveQrStage
 import com.example.ui.screens.tabs.ContentTab
 import com.example.ui.screens.tabs.DesignTab
 import com.example.ui.screens.tabs.HistoryTab
@@ -133,6 +134,12 @@ fun StudioScreen(
     val showStudioScrollToTop by remember {
         derivedStateOf {
             activeTab == 1 && scrollState.value > 250
+        }
+    }
+
+    val showStickyQrPreview by remember {
+        derivedStateOf {
+            scrollState.value > 260
         }
     }
 
@@ -604,6 +611,25 @@ fun StudioScreen(
             containerColor = CardDark
         )
     }
+
+    // Sticky Live QR Code Preview (stays visible at the top edge when scrolling through presets, colors, & design tabs)
+    StickyLiveQrStage(
+        visible = showStickyQrPreview,
+        bitmap = qrBitmap,
+        scanResult = scanResult,
+        style = style,
+        isGenerating = isGenerating,
+        onScrollToTop = {
+            coroutineScope.launch {
+                scrollState.animateScrollTo(0)
+            }
+        },
+        onSaveHistory = { viewModel.saveToHistory() },
+        onAutoFix = { viewModel.autoFixScan() },
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .padding(top = 10.dp, end = 12.dp)
+    )
 
     // Floating Scroll-To-Top Arrow Button for Presets option
     AnimatedVisibility(
