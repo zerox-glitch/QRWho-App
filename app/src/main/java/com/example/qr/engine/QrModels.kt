@@ -363,6 +363,7 @@ enum class FrameStyle(val label: String) {
 enum class GradientType(val label: String, val apiKey: String) {
     None("Solid Color", "none"),
     Linear("Horizontal Linear", "linear"),
+    Vertical("Vertical Linear", "vertical"),
     Radial("Centered Radial", "radial"),
     Diagonal("Diagonal Flow", "diagonal");
 

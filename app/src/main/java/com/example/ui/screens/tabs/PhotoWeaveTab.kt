@@ -72,7 +72,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.qr.engine.BuiltInLogos
 import com.example.qr.engine.ImageMode
 import com.example.qr.engine.PhotoKernel
 import com.example.qr.engine.QrStyle
@@ -297,25 +296,15 @@ fun PhotoWeaveTab(
             }
         }
 
-        // 3. Center Logo Gallery & Custom Logo
-        var selectedLogoCategory by remember { mutableStateOf("All") }
-        val logoCategories = listOf("All", "Social", "Daily Life", "Payment", "Symbols")
-        val filteredLogos = remember(selectedLogoCategory) {
-            if (selectedLogoCategory == "All") BuiltInLogos.list
-            else BuiltInLogos.list.filter { it.category.equals(selectedLogoCategory, ignoreCase = true) }
-        }
-
+        // 3. Center Logo (Custom PNG Logo Upload)
         Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Center Logo", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("(${BuiltInLogos.list.size} marks)", color = TextMuted, fontSize = 11.sp)
-                }
-                if (logoBitmap != null || style.selectedLogoId != null) {
+                Text("Center Logo (PNG)", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                if (logoBitmap != null) {
                     Text(
                         text = "Remove logo ✕",
                         color = BeaconRose,
@@ -334,203 +323,88 @@ fun PhotoWeaveTab(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Logo Category Filter Chips
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                logoCategories.forEach { cat ->
-                    val isCatSelected = selectedLogoCategory == cat
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (isCatSelected) ElectricCyan.copy(alpha = 0.20f) else SurfaceDark)
-                            .border(1.dp, if (isCatSelected) ElectricCyan else CardBorder, RoundedCornerShape(16.dp))
-                            .clickable { selectedLogoCategory = cat }
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = cat,
-                            color = if (isCatSelected) ElectricCyan else TextSecondary,
-                            fontSize = 11.sp,
-                            fontWeight = if (isCatSelected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Logo Horizontal Grid with Actual Graphics
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Option 1: None Tile
-                val isNoneSelected = style.selectedLogoId == null && logoBitmap == null
-                Surface(
+                val isNoneSelected = logoBitmap == null
+                Box(
                     modifier = Modifier
-                        .width(62.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(
-                            if (isNoneSelected) 1.5.dp else 1.dp,
-                            if (isNoneSelected) ElectricCyan else CardBorder,
-                            RoundedCornerShape(12.dp)
-                        )
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isNoneSelected) ElectricCyan.copy(alpha = 0.12f) else CardDark)
                         .clickable {
                             onCustomLogoSelected(null)
                             onBuiltInLogoSelected(null)
-                        },
-                    color = if (isNoneSelected) ElectricCyan.copy(alpha = 0.15f) else CardDark
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(SurfaceDark),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Block,
-                                contentDescription = "None",
-                                tint = if (isNoneSelected) ElectricCyan else TextMuted,
-                                modifier = Modifier.size(20.dp)
-                            )
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Block,
+                            contentDescription = "No Logo",
+                            tint = if (isNoneSelected) ElectricCyan else TextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Text(
-                            text = "None",
+                            text = "No Logo",
                             color = if (isNoneSelected) ElectricCyan else TextSecondary,
-                            fontSize = 10.sp,
-                            fontWeight = if (isNoneSelected) FontWeight.Bold else FontWeight.Normal,
-                            maxLines = 1
+                            fontSize = 12.sp,
+                            fontWeight = if (isNoneSelected) FontWeight.Bold else FontWeight.Normal
                         )
                     }
                 }
 
                 // Option 2: Upload Custom Logo Tile
                 val isCustomSelected = logoBitmap != null
-                Surface(
+                Box(
                     modifier = Modifier
-                        .width(62.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(
-                            if (isCustomSelected) 1.5.dp else 1.dp,
-                            if (isCustomSelected) ElectricCyan else CardBorder,
-                            RoundedCornerShape(12.dp)
-                        )
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isCustomSelected) ElectricCyan.copy(alpha = 0.12f) else CardDark)
                         .clickable {
                             logoPickerLauncher.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                             )
-                        },
-                    color = if (isCustomSelected) ElectricCyan.copy(alpha = 0.15f) else CardDark
+                        }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(SurfaceDark),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (logoBitmap != null) {
-                                Image(
-                                    bitmap = logoBitmap.asImageBitmap(),
-                                    contentDescription = "Custom Logo",
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.AddPhotoAlternate,
-                                    contentDescription = "Upload Custom Logo",
-                                    tint = ElectricCyan,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                        if (logoBitmap != null) {
+                            Image(
+                                bitmap = logoBitmap.asImageBitmap(),
+                                contentDescription = "Custom Logo",
+                                modifier = Modifier.size(22.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.AddPhotoAlternate,
+                                contentDescription = "Upload Logo",
+                                tint = ElectricCyan,
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = if (isCustomSelected) "Custom" else "+ Custom",
+                            text = if (isCustomSelected) "Custom Added" else "+ Upload Logo",
                             color = if (isCustomSelected) ElectricCyan else TextPrimary,
-                            fontSize = 10.sp,
-                            fontWeight = if (isCustomSelected) FontWeight.Bold else FontWeight.Medium,
-                            maxLines = 1
+                            fontSize = 12.sp,
+                            fontWeight = if (isCustomSelected) FontWeight.Bold else FontWeight.Medium
                         )
-                    }
-                }
-
-                // Option 3: Built-in Logos with Actual Graphics
-                filteredLogos.forEach { logo ->
-                    val isSelected = style.selectedLogoId == logo.id && logoBitmap == null
-                    val logoBmp = remember(logo.id) {
-                        BuiltInLogos.createLogoBitmap(logo.id, 96)
-                    }
-
-                    Surface(
-                        modifier = Modifier
-                            .width(62.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .border(
-                                if (isSelected) 2.dp else 1.dp,
-                                if (isSelected) ElectricCyan else CardBorder,
-                                RoundedCornerShape(12.dp)
-                            )
-                            .clickable {
-                                onCustomLogoSelected(null)
-                                onBuiltInLogoSelected(logo.id)
-                            },
-                        color = if (isSelected) ElectricCyan.copy(alpha = 0.15f) else CardDark
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(SurfaceDark),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Image(
-                                    bitmap = logoBmp.asImageBitmap(),
-                                    contentDescription = logo.name,
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .clip(CircleShape)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = logo.name,
-                                color = if (isSelected) ElectricCyan else TextPrimary,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                fontSize = 10.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Center
-                            )
-                        }
                     }
                 }
             }
 
             // Logo scale slider if logo is active
-            if (logoBitmap != null || style.selectedLogoId != null) {
+            if (logoBitmap != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -604,181 +478,7 @@ fun PhotoWeaveTab(
             )
         }
 
-        // 5. Weave look (8 Presets)
-        Column {
-            Text("Weave look", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                WeavePresets.list.forEach { preset ->
-                    OutlinedButton(
-                        onClick = {
-                            onStyleChange(
-                                style.copy(
-                                    imageMode = preset.imageMode,
-                                    moduleShape = preset.moduleShape,
-                                    artisticStrength = preset.artisticStrength,
-                                    contrast = preset.contrast,
-                                    effect = preset.effect,
-                                    gradientType = preset.gradientType,
-                                    photoKernel = preset.photoKernel
-                                )
-                            )
-                        },
-                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(preset.label, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            Text(preset.hint, color = TextMuted, fontSize = 9.sp)
-                        }
-                    }
-                }
-            }
-        }
-
-        // 6. How much photo should show? (Photo Visibility)
-        Column {
-            Text("How much photo should show?", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            val visibilityOptions = listOf(
-                PhotoKernel.Auto,
-                PhotoKernel.Detail,
-                PhotoKernel.Balanced,
-                PhotoKernel.CameraSafe
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                visibilityOptions.forEach { opt ->
-                    val isSelected = style.photoKernel == opt
-                    val bg = if (isSelected) ElectricCyan else SurfaceDark
-                    val textColor = if (isSelected) Color(0xFF0C0C0B) else TextPrimary
-                    val border = if (isSelected) ElectricCyan else CardBorder
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(bg)
-                            .border(1.dp, border, RoundedCornerShape(8.dp))
-                            .clickable { onStyleChange(style.copy(photoKernel = opt)) }
-                            .padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = opt.label,
-                            color = textColor,
-                            fontSize = 11.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = style.photoKernel.hint,
-                color = TextMuted,
-                fontSize = 11.sp
-            )
-        }
-
-        // 7. Smart Art Switch
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .border(1.dp, CardBorder, RoundedCornerShape(12.dp)),
-            color = CardDark
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text("Smart Art", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Reads luma, contrast & edges, then auto-picks a weave.",
-                            color = TextMuted,
-                            fontSize = 11.sp,
-                            lineHeight = 15.sp
-                        )
-                    }
-                }
-                Switch(
-                    checked = style.smartArt,
-                    onCheckedChange = { onStyleChange(style.copy(smartArt = it)) },
-                    colors = SwitchDefaults.colors(checkedThumbColor = EmeraldGreen, checkedTrackColor = EmeraldGreen.copy(alpha = 0.4f)),
-                    modifier = Modifier.testTag("smart_art_switch")
-                )
-            }
-        }
-
-        // 8. Artistic Strength Slider
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .border(1.dp, CardBorder, RoundedCornerShape(14.dp)),
-            color = CardDark
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Tune, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Artistic strength", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Text("${(style.artisticStrength * 100).toInt()}%", color = ElectricCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Safe", color = EmeraldGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text("Artistic", color = BeaconRose, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-
-                Slider(
-                    value = style.artisticStrength,
-                    onValueChange = { onStyleChange(style.copy(artisticStrength = it)) },
-                    valueRange = 0f..1.0f,
-                    colors = SliderDefaults.colors(
-                        thumbColor = ElectricCyan,
-                        activeTrackColor = ElectricCyan,
-                        inactiveTrackColor = CardBorder
-                    )
-                )
-            }
-        }
 
         // 9. Fine Tuning & Advanced Settings Collapsible Section
         Surface(

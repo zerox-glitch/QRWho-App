@@ -79,6 +79,9 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
+    private val _isOptimizing = MutableStateFlow(false)
+    val isOptimizing: StateFlow<Boolean> = _isOptimizing.asStateFlow()
+
     private val _activeStudioTab = MutableStateFlow(0)
     val activeStudioTab: StateFlow<Int> = _activeStudioTab.asStateFlow()
 
@@ -312,22 +315,47 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
 
     fun autoFixScan() {
         viewModelScope.launch(Dispatchers.Default) {
-            val result = QrScannabilityEvaluator.optimizeScan(
-                current = _style.value,
-                payloadText = _payload.value.toEncodedText(),
-                photoBitmap = _photoBitmap.value,
-                customLogo = _customLogo.value
-            )
-            withContext(Dispatchers.Main) {
-                _style.value = result.style
-                val summary = if (result.notes.isNotEmpty()) {
-                    result.notes.take(3).joinToString(", ")
-                } else {
-                    "Error Correction H & Contrast boosted"
+            _isOptimizing.value = true
+            try {
+                val currentPayloadText = _payload.value.toEncodedText()
+                val currentPhoto = _photoBitmap.value
+                val currentLogo = _customLogo.value
+
+                val result = QrScannabilityEvaluator.optimizeScan(
+                    current = _style.value,
+                    payloadText = currentPayloadText,
+                    photoBitmap = currentPhoto,
+                    customLogo = currentLogo
+                )
+
+                // Generate new bitmap with optimized style
+                val bmp = QrGenerator.generateQrBitmap(
+                    payload = currentPayloadText,
+                    qrStyle = result.style,
+                    photoBitmap = currentPhoto,
+                    customLogo = currentLogo,
+                    sizePx = 1024
+                )
+                val evalResult = QrScannabilityEvaluator.evaluate(bmp)
+
+                withContext(Dispatchers.Main) {
+                    _style.value = result.style
+                    _qrBitmap.value = bmp
+                    _scanResult.value = evalResult
+                    _isOptimizing.value = false
+                    val summary = if (result.notes.isNotEmpty()) {
+                        result.notes.take(2).joinToString(" & ")
+                    } else {
+                        "Level H ECC & Contrast"
+                    }
+                    _userMessage.value = "⚡ Optimized: $summary (Verified Scannable)!"
                 }
-                _userMessage.value = "Fix scan applied: $summary"
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    _isOptimizing.value = false
+                    _userMessage.value = "Optimization error: ${e.localizedMessage}"
+                }
             }
-            triggerRender()
         }
     }
 

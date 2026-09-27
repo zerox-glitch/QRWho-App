@@ -230,6 +230,12 @@ object QrGenerator {
                     qrStyle.fgColor, qrStyle.gradientTo, Shader.TileMode.CLAMP
                 )
             }
+            GradientType.Vertical -> {
+                modulePaint.shader = LinearGradient(
+                    originX, originY, originX, originY + bodyW,
+                    qrStyle.fgColor, qrStyle.gradientTo, Shader.TileMode.CLAMP
+                )
+            }
             GradientType.Diagonal -> {
                 modulePaint.shader = LinearGradient(
                     originX, originY, originX + bodyW, originY + bodyW,
@@ -248,7 +254,7 @@ object QrGenerator {
         }
 
         // 4. Reserve Center Safe Zone for Logo if present
-        val centerZone = if (customLogo != null || qrStyle.imageMode == ImageMode.Logo || qrStyle.selectedLogoId != null) {
+        val centerZone = if (customLogo != null) {
             val logoRadiusModules = (matrixSize * (qrStyle.logoScale.coerceIn(0.18f, 0.28f)) / 2f).toInt()
             val mid = matrixSize / 2
             Rect(mid - logoRadiusModules, mid - logoRadiusModules, mid + logoRadiusModules, mid + logoRadiusModules)
@@ -360,10 +366,9 @@ object QrGenerator {
         // 7. Render Border Artistic Decorations if configured
         drawArtisticBorderDecorations(canvas, qrStyle.artDirection, sizePx, originX, originY, bodyW, qrStyle)
 
-        // 8. Render Center Logo
-        if (customLogo != null || qrStyle.selectedLogoId != null) {
-            val logoBmp = customLogo ?: BuiltInLogos.createLogoBitmap(qrStyle.selectedLogoId ?: "sparkle", (sizePx * 0.24f).toInt())
-            renderCenterLogo(canvas, logoBmp, sizePx, originX, originY, bodyW, qrStyle)
+        // 8. Render Center Logo (Custom PNG Logo)
+        if (customLogo != null) {
+            renderCenterLogo(canvas, customLogo, sizePx, originX, originY, bodyW, qrStyle)
         }
 
         // 9. Render Decorative Frame if requested
@@ -440,6 +445,11 @@ object QrGenerator {
                 append("    </linearGradient>\n")
             } else if (qrStyle.gradientType == GradientType.Linear) {
                 append("    <linearGradient id=\"qrGrad\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"0%\">\n")
+                append("      <stop offset=\"0%\" stop-color=\"$fgHex\" />\n")
+                append("      <stop offset=\"100%\" stop-color=\"$gradHex\" />\n")
+                append("    </linearGradient>\n")
+            } else if (qrStyle.gradientType == GradientType.Vertical) {
+                append("    <linearGradient id=\"qrGrad\" x1=\"0%\" y1=\"0%\" x2=\"0%\" y2=\"100%\">\n")
                 append("      <stop offset=\"0%\" stop-color=\"$fgHex\" />\n")
                 append("      <stop offset=\"100%\" stop-color=\"$gradHex\" />\n")
                 append("    </linearGradient>\n")
@@ -639,23 +649,11 @@ object QrGenerator {
     ) {
         val cx = ox + bodyPx / 2f
         val cy = oy + bodyPx / 2f
-        val logoW = bodyPx * style.logoScale.coerceIn(0.18f, 0.28f)
-        val badgeW = logoW * 1.25f
+        val logoW = bodyPx * style.logoScale.coerceIn(0.15f, 0.28f)
 
-        // Draw pill / circular badge behind logo
-        val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = style.bgColor
-            this.style = Paint.Style.FILL
-            setShadowLayer(sizePx * 0.015f, 0f, sizePx * 0.005f, 0x44000000)
-        }
-        canvas.drawRoundRect(
-            RectF(cx - badgeW / 2f, cy - badgeW / 2f, cx + badgeW / 2f, cy + badgeW / 2f),
-            badgeW * 0.28f, badgeW * 0.28f, badgePaint
-        )
-
-        // Draw logo centered
+        // Draw PNG logo directly as transparent photo with no borders, no plates, and no backgrounds behind it
         val destRect = RectF(cx - logoW / 2f, cy - logoW / 2f, cx + logoW / 2f, cy + logoW / 2f)
-        canvas.drawBitmap(logo, Rect(0, 0, logo.width, logo.height), destRect, Paint(Paint.ANTI_ALIAS_FLAG))
+        canvas.drawBitmap(logo, Rect(0, 0, logo.width, logo.height), destRect, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
     }
 
     private fun drawModuleShape(

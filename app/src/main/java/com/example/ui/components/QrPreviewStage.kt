@@ -89,7 +89,8 @@ fun QrPreviewStage(
     modifier: Modifier = Modifier,
     photoBitmap: Bitmap? = null,
     onRemovePhoto: (() -> Unit)? = null,
-    onSaveCustomPreset: (() -> Unit)? = null
+    onSaveCustomPreset: (() -> Unit)? = null,
+    isOptimizing: Boolean = false
 ) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
@@ -119,9 +120,9 @@ fun QrPreviewStage(
         ) {
             // Live Scannability Status Bar - ALWAYS VISIBLE
             if (scanResult != null) {
-                val isScannable = scanResult.isScannable
-                val isHigh = scanResult.score >= 80
-                val badgeColor = if (isHigh) EmeraldGreen else if (isScannable) AmberWarning else BeaconRose
+                val isScannable = scanResult.isScannable && scanResult.score >= 80
+                val statusTitle = if (isScannable) "Scannable" else "Less Scannable"
+                val badgeColor = if (isScannable) EmeraldGreen else if (scanResult.score >= 50) AmberWarning else BeaconRose
 
                 Row(
                     modifier = Modifier
@@ -140,22 +141,37 @@ fun QrPreviewStage(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = if (isHigh) Icons.Default.CheckCircle else Icons.Default.Warning,
-                            contentDescription = "Scannability",
+                            imageVector = if (isScannable) Icons.Default.CheckCircle else Icons.Default.Warning,
+                            contentDescription = statusTitle,
                             tint = badgeColor,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = statusTitle,
+                                    color = badgeColor,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 12.5.sp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(badgeColor.copy(alpha = 0.22f))
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "${scanResult.score}%",
+                                        color = badgeColor,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
                             Text(
-                                text = if (isHigh) "Verified Scannable (${scanResult.score}%)" else "Scan At Risk (${scanResult.score}%)",
-                                color = badgeColor,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                maxLines = 1
-                            )
-                            Text(
-                                text = scanResult.feedback,
+                                text = if (isScannable) "Verified by mobile camera scanner. Optimal lattice." else "Camera may struggle to scan. Tap Optimize to fix.",
                                 color = TextSecondary,
                                 fontSize = 10.sp,
                                 maxLines = 1,
@@ -164,26 +180,37 @@ fun QrPreviewStage(
                         }
                     }
 
-                    // Fix Scan Button - ALWAYS prominently displayed
+                    // Optimize Button - ALWAYS prominently displayed
                     Button(
                         onClick = onAutoFix,
+                        enabled = !isOptimizing,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = ElectricCyan,
                             contentColor = Color(0xFF0C0C0B)
                         ),
                         shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        contentPadding = PaddingValues(horizontal = 11.dp, vertical = 6.dp),
                         modifier = Modifier
                             .defaultMinSize(minWidth = 1.dp, minHeight = 32.dp)
-                            .testTag("fix_scan_button")
+                            .testTag("optimize_scan_button")
                     ) {
-                        Icon(Icons.Default.AutoFixHigh, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (scanResult.score < 90) "Fix scan" else "Optimize",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
+                        if (isOptimizing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(13.dp),
+                                strokeWidth = 2.dp,
+                                color = Color(0xFF0C0C0B)
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text("Optimizing...", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        } else {
+                            Icon(Icons.Default.AutoFixHigh, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Optimize",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        }
                     }
                 }
             } else {
@@ -213,19 +240,20 @@ fun QrPreviewStage(
 
                     Button(
                         onClick = onAutoFix,
+                        enabled = !isOptimizing,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = ElectricCyan,
                             contentColor = Color(0xFF0C0C0B)
                         ),
                         shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        contentPadding = PaddingValues(horizontal = 11.dp, vertical = 6.dp),
                         modifier = Modifier
                             .defaultMinSize(minWidth = 1.dp, minHeight = 32.dp)
-                            .testTag("fix_scan_button")
+                            .testTag("optimize_scan_button")
                     ) {
                         Icon(Icons.Default.AutoFixHigh, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Fix scan", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("Optimize", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                 }
             }

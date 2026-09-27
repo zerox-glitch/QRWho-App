@@ -74,7 +74,7 @@ class QrEngineTest {
         val eval = QrScannabilityEvaluator.evaluate(bmp)
         assertTrue(eval.isScannable)
         assertEquals(payload, eval.decodedText)
-        assertEquals("Excellent", eval.status)
+        assertEquals("Verified", eval.status)
         assertTrue(eval.score >= 90)
     }
 

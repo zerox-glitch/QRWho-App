@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.qr.engine.GradientType
 import com.example.qr.engine.QrStyle
 import com.example.ui.theme.CardBorder
 import com.example.ui.theme.CardDark
@@ -65,11 +66,11 @@ import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 
 enum class ColorTarget(val label: String, val shortLabel: String) {
-    Foreground("Modules / Dots", "Dots"),
-    EyeFrame("Eye Frame", "Eyes"),
-    EyePupil("Eye Pupil / Ball", "Pupils"),
-    Background("Background", "Background"),
-    GradientEnd("Gradient Flow", "Gradient")
+    Foreground("Dot Color (Start)", "Dot Start"),
+    GradientEnd("Gradient (End)", "Gradient End"),
+    EyeFrame("Eye Frame", "Eye Frame"),
+    EyePupil("Eye Pupil", "Eye Pupil"),
+    Background("Background", "Background")
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -121,7 +122,13 @@ fun CustomColorSection(
             ColorTarget.EyeFrame -> style.copy(eyeColor = colorInt)
             ColorTarget.EyePupil -> style.copy(ballColor = colorInt)
             ColorTarget.Background -> style.copy(bgColor = colorInt)
-            ColorTarget.GradientEnd -> style.copy(gradientTo = colorInt)
+            ColorTarget.GradientEnd -> {
+                if (style.gradientType == GradientType.None) {
+                    style.copy(gradientTo = colorInt, gradientType = GradientType.Diagonal)
+                } else {
+                    style.copy(gradientTo = colorInt)
+                }
+            }
         }
         onStyleChange(updated)
     }

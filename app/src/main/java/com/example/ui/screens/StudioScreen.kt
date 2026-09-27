@@ -110,6 +110,7 @@ fun StudioScreen(
     val qrBitmap by viewModel.qrBitmap.collectAsStateWithLifecycle()
     val scanResult by viewModel.scanResult.collectAsStateWithLifecycle()
     val isGenerating by viewModel.isGenerating.collectAsStateWithLifecycle()
+    val isOptimizing by viewModel.isOptimizing.collectAsStateWithLifecycle()
     val activeTab by viewModel.activeStudioTab.collectAsStateWithLifecycle()
     val historyList by viewModel.historyList.collectAsStateWithLifecycle()
     val customPresets by viewModel.customPresets.collectAsStateWithLifecycle()
@@ -418,6 +419,7 @@ fun StudioScreen(
                 newPresetDesc = "Custom QR style"
                 showSavePresetDialog = true
             },
+            isOptimizing = isOptimizing,
             modifier = Modifier.padding(bottom = 18.dp)
         )
 

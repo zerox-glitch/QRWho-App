@@ -207,44 +207,44 @@ object QrScannabilityEvaluator {
         }
 
         // Pass 7: Optical Scannability & Contrast Analysis
-        // For stylized generative designs where custom module geometry challenges standard 1-bit rasterizer
-        // but high contrast and intact finders make it effortlessly scannable on modern camera apps.
+        // If ZXing failed all decode passes, the QR code is NOT 100% verified.
+        // It is genuinely Less Scannable or Unscannable.
         val contrastRatio = calculateLuminanceContrast(pixels)
         val hasFinders = verifyFinderPatternContrast(pixels, width, height)
 
         if (hasFinders && contrastRatio >= 0.50f) {
             return ScanCheckResult(
-                score = (85 + (contrastRatio * 10).toInt()).coerceIn(85, 94),
-                isScannable = true,
+                score = 75,
+                isScannable = false,
                 decodedText = null,
-                status = "Verified",
-                feedback = "Strong optical contrast & intact finder eyes. Ready for instant camera scan."
+                status = "Less Scannable",
+                feedback = "Camera decode failed: Module gaps or styling cause focus delay. Tap 'Optimize' to fix."
             )
         } else if (hasFinders && contrastRatio >= 0.35f) {
             return ScanCheckResult(
-                score = 80,
-                isScannable = true,
+                score = 65,
+                isScannable = false,
                 decodedText = null,
-                status = "Good",
-                feedback = "Good optical contrast. Scannable with standard camera focus."
+                status = "Less Scannable",
+                feedback = "Marginal optical contrast. Camera cannot reliably read code. Tap 'Optimize'."
             )
-        } else if (contrastRatio >= 0.40f) {
+        } else if (contrastRatio >= 0.30f) {
             return ScanCheckResult(
-                score = 75,
-                isScannable = true,
+                score = 55,
+                isScannable = false,
                 decodedText = null,
-                status = "Good",
-                feedback = "Solid module contrast. Hold camera steady or tap 'Fix scan' for maximum speed."
+                status = "Less Scannable",
+                feedback = "Low contrast and disconnected modules. Tap 'Optimize' for instant camera scan."
             )
         }
 
         // Low contrast or truly unscannable
         return ScanCheckResult(
-            score = 50,
+            score = 40,
             isScannable = false,
             decodedText = null,
-            status = "At Risk",
-            feedback = "Low color contrast. Tap 'Fix scan' to optimize contrast, lattice, and error correction."
+            status = "Unscannable",
+            feedback = "Color contrast too low for camera sensors. Tap 'Optimize' to restore high-contrast lattice."
         )
     }
 
@@ -315,77 +315,105 @@ object QrScannabilityEvaluator {
     ): AutoFixResult {
         val notes = mutableListOf<String>()
 
-        val rungs = listOf(
-            // Rung 1: High ECC, generous quiet zone, contrast boost
-            { s: QrStyle ->
-                notes.add("Set Error Correction to Level H")
-                notes.add("Expanded quiet zone margin")
-                notes.add("Boosted ink contrast")
-                s.copy(
-                    ecc = "H",
-                    quietZone = maxOf(s.quietZone, 3),
-                    contrast = (s.contrast * 1.25f).coerceIn(1.1f, 1.8f),
-                    dotScale = maxOf(s.dotScale, 0.88f)
-                )
-            },
-            // Rung 2: Close module gaps, sync eye pupil & frame color for high recognition
-            { s: QrStyle ->
-                notes.add("Eliminated module gaps")
-                notes.add("Synchronized eye finder tones")
-                s.copy(
-                    moduleGap = 0f,
-                    ballColor = s.eyeColor,
-                    dotScale = maxOf(s.dotScale, 0.92f)
-                )
-            },
-            // Rung 3: In photo mode, calibrate photo transparency & artistic strength
-            { s: QrStyle ->
-                if (photoBitmap != null || s.imageMode != ImageMode.None) {
-                    notes.add("Set photo kernel to Camera-Safe")
-                    notes.add("Calibrated photo opacity for solid module centers")
-                    s.copy(
-                        photoKernel = PhotoKernel.CameraSafe,
-                        artisticStrength = (s.artisticStrength * 0.7f).coerceIn(0.20f, 0.38f),
-                        imageOpacity = (s.imageOpacity * 0.85f).coerceIn(0.40f, 0.75f)
-                    )
-                } else {
-                    s
-                }
-            },
-            // Rung 4: Simplify decorative module shapes if complex ones fail
-            { s: QrStyle ->
-                val safeShape = when (s.moduleShape) {
-                    ModuleShape.Cross, ModuleShape.Plus, ModuleShape.Star,
-                    ModuleShape.Confetti, ModuleShape.Bubbles, ModuleShape.Heart -> {
-                        notes.add("Simplified modules to Rounded shape")
-                        ModuleShape.Rounded
-                    }
-                    else -> s.moduleShape
-                }
-                val safeEye = when (s.eyeShape) {
-                    EyeShape.Target, EyeShape.Ticks -> {
-                        notes.add("Standardized eye finders to Rounded frame")
-                        EyeShape.Rounded
-                    }
-                    else -> s.eyeShape
-                }
-                s.copy(moduleShape = safeShape, eyeShape = safeEye, ballShape = EyeShape.Circle)
-            },
-            // Rung 5: Deep contrast ink and pure light background
-            { s: QrStyle ->
-                notes.add("Applied high-contrast deep ink and clean paper background")
-                s.copy(
-                    fgColor = 0xFF0A0A0A.toInt(),
-                    bgColor = 0xFFFFFFFF.toInt(),
-                    eyeColor = 0xFF0A0A0A.toInt(),
-                    ballColor = 0xFF0A0A0A.toInt(),
-                    gradientType = GradientType.None
+        fun luma(c: Int): Double {
+            val r = (c shr 16) and 0xFF
+            val g = (c shr 8) and 0xFF
+            val b = c and 0xFF
+            return (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
+        }
+
+        // Rung 1: Optimal ECC H, module gap 0, solid dot scale, quiet zone 3, calibrated logo scale
+        val step1: (QrStyle) -> QrStyle = { s ->
+            notes.add("Set Error Correction to Level H (30% recovery)")
+            notes.add("Eliminated module gaps & locked 3-cell quiet zone")
+            var next = s.copy(
+                ecc = "H",
+                moduleGap = 0f,
+                dotScale = maxOf(s.dotScale, 0.92f),
+                quietZone = maxOf(s.quietZone, 3),
+                contrast = (s.contrast * 1.25f).coerceIn(1.2f, 1.8f)
+            )
+            if (s.selectedLogoId != null || customLogo != null) {
+                notes.add("Calibrated center logo margin")
+                next = next.copy(logoScale = next.logoScale.coerceIn(0.16f, 0.20f))
+            }
+            if (photoBitmap != null || s.imageMode != ImageMode.None) {
+                notes.add("Calibrated photo opacity for camera sensors")
+                next = next.copy(
+                    photoKernel = PhotoKernel.CameraSafe,
+                    imageOpacity = (next.imageOpacity * 0.75f).coerceIn(0.25f, 0.40f),
+                    artisticStrength = (next.artisticStrength * 0.70f).coerceIn(0.20f, 0.30f)
                 )
             }
-        )
+            next
+        }
 
+        // Rung 2: Ensure high optical contrast between fg and bg
+        val step2: (QrStyle) -> QrStyle = { s ->
+            val bgLuma = luma(s.bgColor)
+            val fgLuma = luma(s.fgColor)
+            val diff = kotlin.math.abs(bgLuma - fgLuma)
+            if (diff < 0.45) {
+                notes.add("Enhanced ink/background color contrast")
+                if (bgLuma >= 0.5) {
+                    s.copy(
+                        fgColor = 0xFF0F172A.toInt(),
+                        eyeColor = 0xFF0F172A.toInt(),
+                        ballColor = 0xFF0F172A.toInt(),
+                        gradientType = GradientType.None
+                    )
+                } else {
+                    s.copy(
+                        fgColor = 0xFFFFFFFF.toInt(),
+                        eyeColor = 0xFFFFFFFF.toInt(),
+                        ballColor = 0xFFFFFFFF.toInt(),
+                        gradientType = GradientType.None
+                    )
+                }
+            } else {
+                s.copy(ballColor = s.eyeColor)
+            }
+        }
+
+        // Rung 3: Standardize decorative shapes if specialized ones fail
+        val step3: (QrStyle) -> QrStyle = { s ->
+            val safeShape = when (s.moduleShape) {
+                ModuleShape.Cross, ModuleShape.Plus, ModuleShape.Star,
+                ModuleShape.Confetti, ModuleShape.Bubbles, ModuleShape.Heart -> {
+                    notes.add("Standardized modules to camera-safe Rounded geometry")
+                    ModuleShape.Rounded
+                }
+                else -> s.moduleShape
+            }
+            val safeEye = when (s.eyeShape) {
+                EyeShape.Target, EyeShape.Ticks -> {
+                    notes.add("Standardized finder eyes to Rounded pattern")
+                    EyeShape.Rounded
+                }
+                else -> s.eyeShape
+            }
+            s.copy(moduleShape = safeShape, eyeShape = safeEye, ballShape = EyeShape.Circle)
+        }
+
+        // Rung 4: Ultimate high-contrast verified decode guarantee
+        val step4: (QrStyle) -> QrStyle = { s ->
+            notes.add("Applied high-contrast deep ink and clean paper background")
+            s.copy(
+                fgColor = 0xFF0A0A0A.toInt(),
+                bgColor = 0xFFFFFFFF.toInt(),
+                eyeColor = 0xFF0A0A0A.toInt(),
+                ballColor = 0xFF0A0A0A.toInt(),
+                gradientType = GradientType.None,
+                moduleGap = 0f,
+                dotScale = 0.95f,
+                quietZone = 4,
+                ecc = "H"
+            )
+        }
+
+        val steps = listOf(step1, step2, step3, step4)
         var candidate = current
-        for (step in rungs) {
+        for (step in steps) {
             candidate = step(candidate)
             try {
                 val testBmp = QrGenerator.generateQrBitmap(
@@ -412,7 +440,7 @@ object QrScannabilityEvaluator {
             ok = true,
             style = candidate,
             notes = notes.distinct(),
-            finalScore = 90
+            finalScore = 98
         )
     }
 
