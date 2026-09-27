@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FormatPaint
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocalCafe
@@ -39,6 +40,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -56,10 +59,13 @@ import com.example.ui.screens.tabs.DesignTab
 import com.example.ui.screens.tabs.HistoryTab
 import com.example.ui.screens.tabs.PhotoWeaveTab
 import com.example.ui.screens.tabs.PresetsTab
+import com.example.ui.theme.BeaconRose
 import com.example.ui.theme.BgDark
 import com.example.ui.theme.CardBorder
 import com.example.ui.theme.CardDark
 import com.example.ui.theme.ElectricCyan
+import com.example.ui.theme.EmeraldGreen
+import com.example.ui.theme.NeonViolet
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
@@ -83,6 +89,7 @@ import kotlinx.coroutines.launch
 fun StudioScreen(
     viewModel: StudioViewModel,
     onNavigateToHistory: (() -> Unit)? = null,
+    onOpenWelcome: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -129,72 +136,118 @@ fun StudioScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 4.dp)
+                    .clickable { onOpenWelcome?.invoke() },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 androidx.compose.foundation.Image(
                     painter = painterResource(id = R.drawable.qrwho_logo),
                     contentDescription = "QRWho Logo",
                     modifier = Modifier
-                        .size(49.dp)
-                        .clip(RoundedCornerShape(11.dp))
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(10.dp))
                 )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     Text(
                         text = "QRWho Studio",
                         color = TextPrimary,
-                        fontSize = 18.sp,
+                        fontSize = 16.5.sp,
                         fontWeight = FontWeight.Bold,
-                        fontStyle = FontStyle.Italic
+                        fontStyle = FontStyle.Italic,
+                        maxLines = 1,
+                        softWrap = false
                     )
                     com.example.ui.components.RotatingTagline(
-                        prefix = "QR codes that ",
-                        words = listOf("actually scan", "pop", "stand out", "convert", "inspire", "dazzle"),
-                        fontSize = 10.sp
+                        prefix = "QR that ",
+                        words = listOf("scans", "pops", "shines", "converts", "inspires", "dazzles"),
+                        fontSize = 9.5.sp
                     )
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Button(
-                    onClick = {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/qrwho"))
-                            context.startActivity(intent)
-                        } catch (e: Exception) {}
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = com.example.ui.components.KofiRed,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                    modifier = Modifier
-                        .height(28.dp)
-                        .testTag("studio_top_kofi_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocalCafe,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Support ☕", fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                }
+            Spacer(modifier = Modifier.width(4.dp))
 
-                Spacer(modifier = Modifier.width(6.dp))
-
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                // Glowing Coffee Support Button
                 Box(
                     modifier = Modifier
+                        .shadow(
+                            elevation = 6.dp,
+                            shape = RoundedCornerShape(8.dp),
+                            ambientColor = Color(0xFFFF5E5B),
+                            spotColor = Color(0xFFFF2A6D)
+                        )
                         .clip(RoundedCornerShape(8.dp))
-                        .background(ElectricCyan.copy(alpha = 0.12f))
-                        .border(1.dp, ElectricCyan.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .border(
+                            width = 1.dp,
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFFFF9E9C),
+                                    Color(0xFFFF3366)
+                                )
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFFFF5E5B),
+                                    Color(0xFFFF3366)
+                                )
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .clickable {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/qrwho"))
+                                context.startActivity(intent)
+                            } catch (e: Exception) {}
+                        }
+                        .padding(horizontal = 7.dp, vertical = 4.dp)
+                        .testTag("studio_top_kofi_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.LocalCafe,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = "Support ☕",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 9.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                }
+
+                // Compact LVL H Badge
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(ElectricCyan.copy(alpha = 0.10f))
+                        .border(1.dp, ElectricCyan.copy(alpha = 0.30f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "LEVEL H",
+                        text = "LVL H",
                         color = ElectricCyan,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 7.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -299,6 +352,27 @@ fun StudioScreen(
                     Icon(Icons.Default.Bookmark, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(13.dp))
                     Spacer(modifier = Modifier.width(5.dp))
                     Text("Vault (${historyList.size})", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                }
+            }
+
+            // Quick 5: Our Mission Shortcut Chip
+            if (onOpenWelcome != null) {
+                Surface(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .border(1.dp, NeonViolet.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                        .clickable { onOpenWelcome() }
+                        .testTag("quick_bar_our_mission"),
+                    color = NeonViolet.copy(alpha = 0.14f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Favorite, contentDescription = null, tint = BeaconRose, modifier = Modifier.size(13.dp))
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text("❤️ Our Mission", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

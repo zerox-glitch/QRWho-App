@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContactPage
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Inventory2
@@ -89,6 +90,7 @@ import com.example.qr.engine.QrPresets
 import com.example.qr.engine.ShowcaseDesigns
 import com.example.qr.engine.ShowcaseItem
 import com.example.ui.StudioViewModel
+import com.example.ui.theme.BeaconRose
 import com.example.ui.theme.BgDark
 import com.example.ui.theme.CardBorder
 import com.example.ui.theme.CardDark
@@ -107,6 +109,7 @@ fun LandingScreen(
     onNavigateToScanner: () -> Unit,
     onNavigateToHistory: (() -> Unit)? = null,
     onNavigateToShowcase: (() -> Unit)? = null,
+    onOpenWelcome: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -131,7 +134,10 @@ fun LandingScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
-                modifier = Modifier.weight(1f).padding(end = 8.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp)
+                    .clickable { onOpenWelcome?.invoke() },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
@@ -152,7 +158,7 @@ fun LandingScreen(
                     )
                     com.example.ui.components.RotatingTagline(
                         prefix = "QR that ",
-                        words = listOf("actually scans", "pops", "stands out", "converts", "inspires"),
+                        words = listOf("scans", "pops", "shines", "converts", "inspires"),
                         fontSize = 10.sp
                     )
                 }
@@ -366,14 +372,38 @@ fun LandingScreen(
                         fontSize = 12.sp
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(ElectricCyan.copy(alpha = 0.12f))
-                        .border(1.dp, ElectricCyan.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text("4 NEW TOOLS", color = ElectricCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+
+                if (onOpenWelcome != null) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(NeonViolet.copy(alpha = 0.18f))
+                            .border(1.dp, NeonViolet.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                            .clickable { onOpenWelcome() }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .testTag("home_our_mission_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = null,
+                                tint = BeaconRose,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "Our Mission",
+                                color = TextPrimary,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
                 }
             }
 
@@ -394,7 +424,10 @@ fun LandingScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.weight(1f).padding(end = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
@@ -405,9 +438,9 @@ fun LandingScreen(
                                 Icon(Icons.Default.BookmarkAdd, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
                             }
                             Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text("✨ My Presets Library", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("Personal Database of Custom Styles", color = EmeraldGreen, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("✨ My Presets Library", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("Personal Database of Custom Styles", color = EmeraldGreen, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
 
@@ -418,9 +451,9 @@ fun LandingScreen(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen, contentColor = Color(0xFF0C0C0B)),
                             shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text("Open", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text("Open", fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, softWrap = false)
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -448,7 +481,10 @@ fun LandingScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.weight(1f).padding(end = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
@@ -459,9 +495,9 @@ fun LandingScreen(
                                 Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB800), modifier = Modifier.size(20.dp))
                             }
                             Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text("★ Preset Favorites", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("Fast Access to 335+ Curated Styles", color = Color(0xFFFFB800), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("★ Preset Favorites", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("Fast Access to 335+ Curated Styles", color = Color(0xFFFFB800), fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
 
@@ -476,9 +512,9 @@ fun LandingScreen(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB800), contentColor = Color(0xFF0C0C0B)),
                             shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text("View", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text("View", fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, softWrap = false)
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -506,7 +542,10 @@ fun LandingScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.weight(1f).padding(end = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
@@ -517,9 +556,9 @@ fun LandingScreen(
                                 Icon(Icons.Default.Download, contentDescription = null, tint = ElectricCyan, modifier = Modifier.size(20.dp))
                             }
                             Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text("📐 Pro Export Suite", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("512px to 4096px Ultra HD & Vector SVG", color = ElectricCyan, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("📐 Pro Export Suite", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("512px–4096px Ultra HD & Vector SVG", color = ElectricCyan, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
 
@@ -527,9 +566,9 @@ fun LandingScreen(
                             onClick = onNavigateToStudio,
                             colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan, contentColor = Color(0xFF0C0C0B)),
                             shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text("Export", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text("Export", fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, softWrap = false)
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -557,7 +596,10 @@ fun LandingScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.weight(1f).padding(end = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
@@ -568,9 +610,9 @@ fun LandingScreen(
                                 Icon(Icons.Default.History, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(20.dp))
                             }
                             Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text("🕒 Smart History & Vault", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("${historyList.size} codes saved on device", color = TextMuted, fontSize = 10.sp)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("🕒 Smart History & Vault", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("${historyList.size} codes saved on device", color = TextMuted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
 
@@ -585,9 +627,9 @@ fun LandingScreen(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan, contentColor = Color(0xFF0C0C0B)),
                             shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text("Open Vault", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text("Open Vault", fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, softWrap = false)
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))

@@ -49,6 +49,7 @@ import com.example.ui.screens.LandingScreen
 import com.example.ui.screens.ScannerScreen
 import com.example.ui.screens.ShowcaseScreen
 import com.example.ui.screens.StudioScreen
+import com.example.ui.screens.WelcomeScreen
 import com.example.ui.theme.BgDark
 import com.example.ui.theme.CardBorder
 import com.example.ui.theme.ElectricCyan
@@ -62,6 +63,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val prefs = remember { context.getSharedPreferences("qrwho_prefs", android.content.Context.MODE_PRIVATE) }
+                val hasSeenWelcome = remember { prefs.getBoolean("has_seen_welcome_v1", false) }
+                var showWelcomeScreen by remember { androidx.compose.runtime.mutableStateOf(!hasSeenWelcome) }
+
                 val viewModel: StudioViewModel = viewModel()
                 val snackbarHostState = remember { SnackbarHostState() }
                 val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
@@ -90,11 +96,35 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    containerColor = BgDark,
-                    snackbarHost = { SnackbarHost(snackbarHostState) },
-                    bottomBar = {
+                if (showWelcomeScreen) {
+                    WelcomeScreen(
+                        onStartCreating = {
+                            prefs.edit().putBoolean("has_seen_welcome_v1", true).apply()
+                            showWelcomeScreen = false
+                            currentNavDestination = 1
+                        },
+                        onOpenScanner = {
+                            prefs.edit().putBoolean("has_seen_welcome_v1", true).apply()
+                            showWelcomeScreen = false
+                            currentNavDestination = 2
+                        },
+                        onDismiss = {
+                            prefs.edit().putBoolean("has_seen_welcome_v1", true).apply()
+                            showWelcomeScreen = false
+                        },
+                        onSelectPreset = { preset ->
+                            prefs.edit().putBoolean("has_seen_welcome_v1", true).apply()
+                            viewModel.selectPreset(preset)
+                            showWelcomeScreen = false
+                            currentNavDestination = 1
+                        }
+                    )
+                } else {
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        containerColor = BgDark,
+                        snackbarHost = { SnackbarHost(snackbarHostState) },
+                        bottomBar = {
                         NavigationBar(
                             modifier = Modifier
                                 .windowInsetsPadding(WindowInsets.navigationBars)
@@ -265,11 +295,13 @@ class MainActivity : ComponentActivity() {
                             onNavigateToScanner = { currentNavDestination = 2 },
                             onNavigateToHistory = { currentNavDestination = 3 },
                             onNavigateToShowcase = { currentNavDestination = 4 },
+                            onOpenWelcome = { showWelcomeScreen = true },
                             modifier = Modifier.padding(innerPadding)
                         )
                         1 -> StudioScreen(
                             viewModel = viewModel,
                             onNavigateToHistory = { currentNavDestination = 3 },
+                            onOpenWelcome = { showWelcomeScreen = true },
                             modifier = Modifier.padding(innerPadding)
                         )
                         2 -> ScannerScreen(
@@ -290,6 +322,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+            }
             }
         }
     }

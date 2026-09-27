@@ -291,12 +291,18 @@ fun QrPreviewStage(
                     color = ElectricCyan,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 0.5.sp,
+                    maxLines = 1,
+                    softWrap = false
                 )
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "512px to 4096px Ultra HD · Vector SVG",
+                    text = "512px–4096px · Vector SVG",
                     color = TextMuted,
-                    fontSize = 10.sp
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 

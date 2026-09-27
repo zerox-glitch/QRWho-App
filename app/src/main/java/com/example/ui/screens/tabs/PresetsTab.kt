@@ -108,7 +108,7 @@ fun PresetsTab(
     }
 
     val filteredList = remember(searchQuery, selectedCategory, customPresetObjects, favoriteIds, QrPresets.list.size) {
-        displayCount = 30
+        displayCount = 60
         val query = searchQuery.trim().lowercase()
         when {
             selectedCategory.startsWith("★ Favorites") -> {

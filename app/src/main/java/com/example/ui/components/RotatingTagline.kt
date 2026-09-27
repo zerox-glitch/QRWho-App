@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.ElectricCyan
@@ -29,7 +30,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun RotatingTagline(
     prefix: String = "Artistic QR codes that ",
-    words: List<String> = listOf("actually scan", "pop", "stand out", "convert", "inspire", "dazzle"),
+    words: List<String> = listOf("scan", "pop", "stand out", "convert", "inspire", "dazzle"),
     fontSize: TextUnit = 11.sp,
     modifier: Modifier = Modifier,
     prefixColor: Color = TextMuted,
@@ -53,7 +54,9 @@ fun RotatingTagline(
                 text = prefix,
                 color = prefixColor,
                 fontSize = fontSize,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                softWrap = false
             )
         }
         AnimatedContent(
@@ -68,7 +71,10 @@ fun RotatingTagline(
                 text = word,
                 color = highlightColor,
                 fontSize = fontSize,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

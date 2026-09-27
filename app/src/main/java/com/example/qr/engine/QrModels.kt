@@ -337,7 +337,27 @@ enum class FrameStyle(val label: String) {
     PhoneFrame("Smartphone Shell"),
     Stamp("Postage Stamp"),
     Ticket("Event Ticket"),
-    NeonGlow("Neon Edge")
+    NeonGlow("Neon Edge"),
+    Bracket("Bracket"),
+    Badge("Badge"),
+    Arch("Arch"),
+    Cup("Cup"),
+    Card("Card"),
+    Label("Label"),
+    Speech("Speech Bubble"),
+    Note("Note"),
+    Globe("Globe"),
+    Plaque("Plaque"),
+    Pentagon("Pentagon"),
+    Hexagon("Hexagon"),
+    Diamond("Diamond"),
+    Seal("Seal"),
+    Bucket("Bucket");
+
+    companion object {
+        fun fromString(key: String): FrameStyle =
+            values().find { it.name.equals(key, ignoreCase = true) || it.label.equals(key, ignoreCase = true) } ?: None
+    }
 }
 
 enum class GradientType(val label: String, val apiKey: String) {
